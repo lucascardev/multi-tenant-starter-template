@@ -7,57 +7,51 @@ import { useParams, useRouter } from "next/navigation";
 
 const navigationItems: SidebarItem[] = [
   {
-    name: "Overview",
+    name: "Dashboard",
     href: "/",
     icon: Globe,
     type: "item",
   },
   {
     type: 'label',
-    name: 'Management',
+    name: 'Gerencimento',
   },
   {
-    name: "Products",
+    name: "Meu Plano",
     href: "/products",
     icon: ShoppingBag,
     type: "item",
   },
   {
-    name: "People",
+    name: "Pessoas meu time",
     href: "/people",
     icon: Users,
     type: "item",
   },
   {
-    name: "Segments",
+    name: "Integração",
     href: "/segments",
     icon: Columns3,
     type: "item",
   },
   {
-    name: "Regions",
+    name: "WhatsApp",
     href: "/regions",
     icon: Locate,
     type: "item",
   },
   {
     type: 'label',
-    name: 'Monetization',
+    name: 'Financeiro',
   },
   {
-    name: "Revenue",
+    name: "Faturas",
     href: "/revenue",
     icon: BarChart4,
     type: "item",
   },
   {
-    name: "Orders",
-    href: "/orders",
-    icon: ShoppingCart,
-    type: "item",
-  },
-  {
-    name: "Discounts",
+    name: "Indicação",
     href: "/discounts",
     icon: BadgePercent,
     type: "item",
@@ -67,7 +61,7 @@ const navigationItems: SidebarItem[] = [
     name: 'Settings',
   },
   {
-    name: "Configuration",
+    name: "Configurações IA",
     href: "/configuration",
     icon: Settings2,
     type: "item",

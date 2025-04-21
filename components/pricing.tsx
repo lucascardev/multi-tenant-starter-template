@@ -35,7 +35,7 @@ export function PricingCard(props: PricingCardProps) {
       <CardContent>
         <div className="mb-4">
           <span className="text-4xl font-bold">{props.price}</span>
-          <span className="text-muted-foreground">/month</span>
+          <span className="text-muted-foreground">/mês</span>
         </div>
         <ul className="space-y-2">
           {props.features.map((feature, index) => (

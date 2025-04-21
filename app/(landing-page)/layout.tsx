@@ -6,10 +6,10 @@ export default function Layout(props: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       <LandingPageHeader
         items={[
-          { title: "Home", href: "/" },
+          { title: "Início", href: "/" },
           { title: "Features", href: "/#features" },
-          { title: "Pricing", href: "/#pricing" },
-          { title: "Github", href: "https://github.com/stack-auth/stack-template", external: true },
+          { title: "Preços", href: "/#pricing" },
+          { title: "Instagram", href: "https://www.instagram.com/clara_secretaria/", external: true },
         ]}
       />
       <main className="flex-1">{props.children}</main>

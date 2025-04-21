@@ -1,189 +1,296 @@
-import { FeatureGrid } from "@/components/features";
-import { Hero } from "@/components/hero";
-import { PricingGrid } from "@/components/pricing";
-import { stackServerApp } from "@/stack";
-import { GitHubLogoIcon } from "@radix-ui/react-icons";
-import { ComponentIcon, Users } from "lucide-react";
+import { FeatureGrid } from '@/components/features'
+import { Hero } from '@/components/hero'
+import { PricingGrid } from '@/components/pricing'
+import { stackServerApp } from '@/stack'
+import { GitHubLogoIcon } from '@radix-ui/react-icons'
+import { ComponentIcon, Users } from 'lucide-react'
 
 export default async function IndexPage() {
-  const project = await stackServerApp.getProject();
-  if (!project.config.clientTeamCreationEnabled) {
-    return (
-      <div className="w-full min-h-96 flex items-center justify-center">
-        <div className="max-w-xl gap-4">
-          <p className="font-bold text-xl">Setup Required</p>
-          <p className="">
-            {
-              "To start using this project, please enable client-side team creation in the Stack Auth dashboard (Project > Team Settings). This message will disappear once the feature is enabled."
-            }
-          </p>
-        </div>
-      </div>
-    );
-  }
+	const project = await stackServerApp.getProject()
+	if (!project.config.clientTeamCreationEnabled) {
+		return (
+			<div className='w-full min-h-96 flex items-center justify-center'>
+				<div className='max-w-xl gap-4'>
+					<p className='font-bold text-xl'>Setup Required</p>
+					<p className=''>
+						{
+							'To start using this project, please enable client-side team creation in the Stack Auth dashboard (Project > Team Settings). This message will disappear once the feature is enabled.'
+						}
+					</p>
+				</div>
+			</div>
+		)
+	}
 
-  return (
-    <>
-      <Hero
-        capsuleText="100% Open-source & Free"
-        capsuleLink="https://stacktemplate.com"
-        title="A Multi-tenant Next.js Starter Template"
-        subtitle="Built for developers, by developers. Next.js + Shadcn UI + Stack Auth."
-        primaryCtaText="Get Started"
-        primaryCtaLink={stackServerApp.urls.signUp}
-        secondaryCtaText="GitHub"
-        secondaryCtaLink="https://github.com/stack-auth/stack-template"
-        credits={
-          <>
-            Crafted with ❤️ by{" "}
-            <a
-              href="https://stack-auth.com"
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-            >
-              Stack Auth
-            </a>
-          </>
-        }
-      />
+	return (
+		<>
+			<Hero
+				capsuleText='Conheça a Clara'
+				capsuleLink='https://www.instagram.com/clara_secretaria/'
+				title='A IA feita para trabalhar com você.'
+				subtitle='Construida para atender as necessidades de sua clínica.'
+				primaryCtaText='Inscreva-se'
+				primaryCtaLink={stackServerApp.urls.signUp}
+				secondaryCtaText='Contate-nos'
+				secondaryCtaLink='https://wa.me/557192931330'
+				credits={
+					<>
+						Crafted with ❤️ by{' '}
+						<a
+							href='https://stack-auth.com'
+							target='_blank'
+							rel='noreferrer'
+							className='underline'
+						>
+							Stack Auth -
+						</a>
+						<a
+							href='https://stack-auth.com'
+							target='_blank'
+							rel='noreferrer'
+							className='underline'
+						>
+							- LightUP
+						</a>
+					</>
+				}
+			/>
 
-      <div id="features" />
-      <FeatureGrid
-        title="Features"
-        subtitle="Unlock powerful capabilities for your project."
-        items={[
-          {
-            icon: (
-              <svg viewBox="0 0 24 24" className="h-12 w-12 fill-current">
-                <path d="M11.572 0c-.176 0-.31.001-.358.007a19.76 19.76 0 0 1-.364.033C7.443.346 4.25 2.185 2.228 5.012a11.875 11.875 0 0 0-2.119 5.243c-.096.659-.108.854-.108 1.747s.012 1.089.108 1.748c.652 4.506 3.86 8.292 8.209 9.695.779.25 1.6.422 2.534.525.363.04 1.935.04 2.299 0 1.611-.178 2.977-.577 4.323-1.264.207-.106.247-.134.219-.158-.02-.013-.9-1.193-1.955-2.62l-1.919-2.592-2.404-3.558a338.739 338.739 0 0 0-2.422-3.556c-.009-.002-.018 1.579-.023 3.51-.007 3.38-.01 3.515-.052 3.595a.426.426 0 0 1-.206.214c-.075.037-.14.044-.495.044H7.81l-.108-.068a.438.438 0 0 1-.157-.171l-.05-.106.006-4.703.007-4.705.072-.092a.645.645 0 0 1 .174-.143c.096-.047.134-.051.54-.051.478 0 .558.018.682.154.035.038 1.337 1.999 2.895 4.361a10760.433 10760.433 0 0 0 4.735 7.17l1.9 2.879.096-.063a12.317 12.317 0 0 0 2.466-2.163 11.944 11.944 0 0 0 2.824-6.134c.096-.66.108-.854.108-1.748 0-.893-.012-1.088-.108-1.747-.652-4.506-3.859-8.292-8.208-9.695a12.597 12.597 0 0 0-2.499-.523A33.119 33.119 0 0 0 11.573 0zm4.069 7.217c.347 0 .408.005.486.047a.473.473 0 0 1 .237.277c.018.06.023 1.365.018 4.304l-.006 4.218-.744-1.14-.746-1.14v-3.066c0-1.982.01-3.097.023-3.15a.478.478 0 0 1 .233-.296c.096-.05.13-.054.5-.054z" />
-              </svg>
-            ),
-            title: "Next.js 14",
-            description:
-              "Utilize the latest features: App Router, Layouts, Suspense.",
-          },
-          {
-            icon: (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 256 256"
-                className="h-12 w-12 fill-current"
-              >
-                <rect width="256" height="256" fill="none"></rect>
-                <line
-                  x1="208"
-                  y1="128"
-                  x2="128"
-                  y2="208"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="22"
-                ></line>
-                <line
-                  x1="192"
-                  y1="40"
-                  x2="40"
-                  y2="192"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="22"
-                ></line>
-              </svg>
-            ),
-            title: "Shadcn UI",
-            description:
-              "Modern and fully customizable UI components based on Tailwind CSS.",
-          },
-          {
-            icon: (
-              <svg
-                width="201"
-                height="242"
-                viewBox="0 0 201 242"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-12 w-12 fill-current"
-              >
-                <path d="M104.004 1.78785C101.751 0.662376 99.1002 0.663161 96.8483 1.78998L4.9201 47.7892C2.21103 49.1448 0.5 51.9143 0.5 54.9436V130.526C0.5 133.556 2.2123 136.327 4.92292 137.682L96.9204 183.67C99.1725 184.796 101.823 184.796 104.075 183.67L168.922 151.246C174.242 148.587 180.5 152.455 180.5 158.402V168.855C180.5 171.885 178.788 174.655 176.078 176.01L104.077 212.011C101.825 213.137 99.1745 213.137 96.9224 212.012L12.0771 169.598C6.75791 166.939 0.5 170.807 0.5 176.754V187.048C0.5 190.083 2.21689 192.856 4.93309 194.209L97.0051 240.072C99.2529 241.191 101.896 241.191 104.143 240.07L196.071 194.21C198.785 192.857 200.5 190.084 200.5 187.052V119.487C200.5 113.54 194.242 109.672 188.922 112.332L132.078 140.754C126.758 143.414 120.5 139.546 120.5 133.599V123.145C120.5 120.115 122.212 117.345 124.922 115.99L196.078 80.4124C198.788 79.0573 200.5 76.2872 200.5 73.257V54.9468C200.5 51.9158 198.787 49.1451 196.076 47.7904L104.004 1.78785Z" />
-              </svg>
-            ),
-            title: "Stack Auth",
-            description:
-              "Comprehensive Authentication: OAuth, User Management, and more.",
-          },
-          {
-            icon: <Users className="h-12 w-12" />,
-            title: "Multi-tenancy & RBAC",
-            description: "Built-in Teams and Permissions.",
-          },
-          {
-            icon: <GitHubLogoIcon className="h-12 w-12" />,
-            title: "100% Open-source",
-            description: "Open-source and self-hostable codebase.",
-          },
-          {
-            icon: <ComponentIcon className="h-12 w-12" />,
-            title: "Modular Design",
-            description: "Easily extend and customize. No spaghetti code.",
-          },
-        ]}
-      />
+			<div id='features' />
+			<FeatureGrid
+				title='Como vamos trazer soluções para sua empresa.'
+				subtitle='Clínicas odontológicas de psicologia, nutrição, estética e academias.'
+				items={[
+					{
+						icon: (
+							<svg
+								fill='#000000'
+								className='h-12 w-12 fill-current'
+								viewBox='0 0 256 256'
+							>
+								<g id='SVGRepo_bgCarrier' stroke-width='0'></g>
+								<g
+									id='SVGRepo_tracerCarrier'
+									stroke-linecap='round'
+									stroke-linejoin='round'
+								></g>
+								<g id='SVGRepo_iconCarrier'>
+									{' '}
+									<path d='M197.728,207.412H11.939c-1.657,0-3-1.343-3-3v-91.833H3c-1.657,0-3-1.343-3-3s1.343-3,3-3h51.877V91.114 c0-7.724,4.633-14.566,11.804-17.434l22.872-9.149c0.754-0.304,1.599-0.285,2.342,0.048c0.742,0.333,1.317,0.952,1.594,1.717 l5.382,14.88l0.735-2.114l-1.757-4.294c-0.378-0.925-0.271-1.978,0.286-2.808s1.491-1.328,2.491-1.328h11.173 c1,0,1.934,0.498,2.491,1.328c0.557,0.83,0.664,1.883,0.285,2.808l-1.757,4.294l0.735,2.114l5.382-14.88 c0.276-0.765,0.852-1.384,1.594-1.717c0.742-0.332,1.587-0.351,2.342-0.048l22.872,9.149c7.17,2.867,11.804,9.71,11.804,17.434 v15.466h49.119c1.657,0,3,1.343,3,3s-1.343,3-3,3h-5.938v91.833C200.728,206.07,199.385,207.412,197.728,207.412z M14.939,201.412 h179.789v-88.833H14.939V201.412z M60.877,106.579h90.67V91.114c0-5.255-3.152-9.912-8.032-11.863l-19.992-7.997l-7.202,19.915 c-0.43,1.188-1.559,1.979-2.821,1.979c-0.006,0-0.012,0-0.019,0c-1.27-0.008-2.397-0.814-2.814-2.015L106.78,79.96 c-0.24-0.69-0.221-1.444,0.057-2.121l0.494-1.208h-2.236l0.494,1.208c0.277,0.677,0.296,1.431,0.057,2.121l-3.886,11.173 c-0.417,1.2-1.545,2.007-2.815,2.015c-0.006,0-0.013,0-0.019,0c-1.263,0-2.391-0.791-2.821-1.979l-7.203-19.915L68.909,79.25 c-4.879,1.951-8.032,6.608-8.032,11.863V106.579z M106.212,66.884c-2.594,0-5.188-0.489-7.658-1.47 c-1.919-0.761-3.52-1.731-4.757-2.886c-2.972-2.774-5.929-8.201-7.349-11.019c-2.92-0.443-6.643-2.617-8.283-8.887 c-0.98-3.749-0.72-6.819,0.774-9.126c0.622-0.96,1.358-1.635,2.062-2.107c0.007-0.67,0.036-1.471,0.106-2.368 c-1.337-2.291-3.407-7.736,0.853-15.293c3.225-5.723,7.773-6.923,11.086-6.609c1.734-2.284,5.648-4.95,14.391-4.863 c6.179,0.067,11.105,2.313,14.191,4.224c5.933,2.928,9.573,9.033,10.472,12.209v0.001c1.315,4.654,0.147,10.366-0.487,12.833 c0.645,0.464,1.305,1.102,1.871,1.975c1.494,2.308,1.754,5.378,0.773,9.127c-1.639,6.268-5.361,8.441-8.282,8.886 c-1.42,2.817-4.377,8.244-7.35,11.019c-1.235,1.153-2.836,2.124-4.756,2.886C111.401,66.395,108.807,66.884,106.212,66.884z M88.338,45.538c1.148,0,2.22,0.661,2.72,1.734c1.028,2.209,4.259,8.466,6.834,10.869c0.687,0.642,1.654,1.212,2.875,1.695 c3.461,1.373,7.43,1.373,10.891,0c1.222-0.484,2.188-1.055,2.875-1.695c2.582-2.41,5.809-8.662,6.834-10.868 c0.62-1.331,1.908-2.065,3.322-1.675c0.339,0.046,2.568,0.085,3.765-4.493c0.514-1.964,0.512-3.548-0.005-4.346 c-0.221-0.341-0.563-0.516-0.565-0.517c-1.54-0.257-2.625-1.65-2.497-3.205l0,0c0.005-0.052,0.034-0.47,0.039-1.148 c-0.037-0.468-0.224-1.083-0.409-1.359c-1.209-0.58-5.835-1.473-9.934-2.264c-2.054-0.396-4.313-0.833-6.726-1.326 c-1.621-0.293-3.08-0.707-4.285-1.224c-3.19-1.184-5.646-2.762-7.436-4.215c-0.633,1.356-1.476,2.774-2.576,3.962 c-2.374,2.564-5.181,4.105-7.027,4.922c-0.077,1.604,0.003,2.635,0.004,2.648c0.064,0.797-0.054,1.574-0.575,2.182 c-0.507,0.593-1.095,0.951-1.864,1.022c-1.064,0.357-1.312,2.253-0.628,4.867c1.271,4.859,3.741,4.497,3.766,4.493 C87.938,45.558,88.14,45.538,88.338,45.538z M96.521,13.146c0.536,0.226,1.007,0.606,1.342,1.113 c0.013,0.018,2.607,3.742,8.358,5.855c0.057,0.021,0.111,0.043,0.166,0.066c0.795,0.348,1.835,0.639,3.091,0.865 c0.039,0.007,0.085,0.017,0.124,0.025c2.346,0.479,4.584,0.911,6.617,1.304c5.329,1.028,8.463,1.657,10.435,2.36 c0.094-1.475,0.045-2.971-0.276-4.23c-0.001-0.002-0.002-0.005-0.002-0.007c-0.001-0.001-0.001-0.002-0.001-0.003 c-0.015-0.059-0.031-0.116-0.047-0.175c-0.011-0.038-0.022-0.077-0.035-0.118c-0.549-1.757-2.871-5.849-6.752-8.042 c-0.201-0.113-0.405-0.222-0.614-0.324c-0.03-0.014-0.06-0.027-0.089-0.042c-0.086-0.044-0.171-0.091-0.253-0.143 c-2.422-1.52-6.334-3.343-11.212-3.396c-0.133-0.002-0.264-0.002-0.393-0.002c-6.671,0-8.95,1.917-9.348,2.795 C97.629,11.943,97.224,12.612,96.521,13.146z M87.188,16.674c-1.965,3.487-1.941,6.1-1.54,7.724c1.213-0.639,2.718-1.615,4.009-3.01 c1.627-1.758,2.559-5.041,2.757-6.053c0.157-0.802,0.628-1.486,1.283-1.922c-0.089-0.033-0.176-0.069-0.263-0.107 C92.883,13.085,89.755,12.12,87.188,16.674z'></path>{' '}
+								</g>
+							</svg>
+						),
+						title: 'Recepcionista',
+						description:
+							'Atuação 24h por dia, 7 dias por semana, com atendimento humanizado.',
+					},
+					{
+						icon: (
+							<svg
+								viewBox='0 0 24 24'
+								className='h-12 w-12 fill-current'
+								fill='none'
+								xmlns='http://www.w3.org/2000/svg'
+							>
+								<g id='SVGRepo_bgCarrier' stroke-width='0'></g>
+								<g
+									id='SVGRepo_tracerCarrier'
+									stroke-linecap='round'
+									stroke-linejoin='round'
+								></g>
+								<g id='SVGRepo_iconCarrier'>
+									{' '}
+									<path
+										d='M10.8613 3.36335C11.3679 2.45445 11.6213 2 12 2C12.3787 2 12.6321 2.45445 13.1387 3.36335L13.2698 3.59849C13.4138 3.85677 13.4858 3.98591 13.598 4.07112C13.7103 4.15633 13.8501 4.18796 14.1296 4.25122L14.3842 4.30881C15.3681 4.53142 15.86 4.64273 15.977 5.01909C16.0941 5.39546 15.7587 5.78763 15.088 6.57197L14.9144 6.77489C14.7238 6.99777 14.6285 7.10922 14.5857 7.24709C14.5428 7.38496 14.5572 7.53364 14.586 7.83102L14.6122 8.10176C14.7136 9.14824 14.7644 9.67148 14.4579 9.90409C14.1515 10.1367 13.6909 9.92462 12.7697 9.50047L12.5314 9.39073C12.2696 9.2702 12.1387 9.20994 12 9.20994C11.8613 9.20994 11.7304 9.2702 11.4686 9.39073L11.2303 9.50047C10.3091 9.92462 9.84847 10.1367 9.54206 9.90409C9.23565 9.67148 9.28635 9.14824 9.38776 8.10176L9.41399 7.83102C9.44281 7.53364 9.45722 7.38496 9.41435 7.24709C9.37147 7.10922 9.27617 6.99777 9.08557 6.77489L8.91204 6.57197C8.2413 5.78763 7.90593 5.39546 8.02297 5.01909C8.14001 4.64273 8.63194 4.53142 9.61581 4.30881L9.87035 4.25122C10.1499 4.18796 10.2897 4.15633 10.402 4.07112C10.5142 3.98591 10.5862 3.85677 10.7302 3.59849L10.8613 3.36335Z'
+										stroke='#000000'
+										stroke-width='1.5'
+									></path>{' '}
+									<path
+										d='M19.4306 7.68168C19.684 7.22723 19.8106 7 20 7C20.1894 7 20.316 7.22722 20.5694 7.68167L20.6349 7.79925C20.7069 7.92839 20.7429 7.99296 20.799 8.03556C20.8551 8.07817 20.925 8.09398 21.0648 8.12561L21.1921 8.15441C21.684 8.26571 21.93 8.32136 21.9885 8.50955C22.047 8.69773 21.8794 8.89381 21.544 9.28598L21.4572 9.38744C21.3619 9.49889 21.3143 9.55461 21.2928 9.62354C21.2714 9.69248 21.2786 9.76682 21.293 9.91551L21.3061 10.0509C21.3568 10.5741 21.3822 10.8357 21.229 10.952C21.0758 11.0683 20.8455 10.9623 20.3849 10.7502L20.2657 10.6954C20.1348 10.6351 20.0694 10.605 20 10.605C19.9306 10.605 19.8652 10.6351 19.7343 10.6954L19.6151 10.7502C19.1545 10.9623 18.9242 11.0683 18.771 10.952C18.6178 10.8357 18.6432 10.5741 18.6939 10.0509L18.707 9.91551C18.7214 9.76682 18.7286 9.69248 18.7072 9.62354C18.6857 9.55461 18.6381 9.49889 18.5428 9.38744L18.456 9.28599C18.1206 8.89381 17.953 8.69773 18.0115 8.50955C18.07 8.32136 18.316 8.26571 18.8079 8.15441L18.9352 8.12561C19.075 8.09398 19.1449 8.07817 19.201 8.03556C19.2571 7.99296 19.2931 7.92839 19.3651 7.79925L19.4306 7.68168Z'
+										stroke='#000000'
+										stroke-width='1.5'
+									></path>{' '}
+									<path
+										d='M3.43063 7.68168C3.68396 7.22723 3.81063 7 4 7C4.18937 7 4.31604 7.22722 4.56937 7.68167L4.63491 7.79925C4.7069 7.92839 4.74289 7.99296 4.79901 8.03556C4.85513 8.07817 4.92503 8.09398 5.06482 8.12561L5.19209 8.15441C5.68403 8.26571 5.93 8.32136 5.98852 8.50955C6.04704 8.69773 5.87935 8.89381 5.54398 9.28598L5.45722 9.38744C5.36191 9.49889 5.31426 9.55461 5.29283 9.62354C5.27139 9.69248 5.27859 9.76682 5.293 9.91551L5.30612 10.0509C5.35682 10.5741 5.38218 10.8357 5.22897 10.952C5.07576 11.0683 4.84547 10.9623 4.38487 10.7502L4.2657 10.6954C4.13481 10.6351 4.06937 10.605 4 10.605C3.93063 10.605 3.86519 10.6351 3.7343 10.6954L3.61513 10.7502C3.15454 10.9623 2.92424 11.0683 2.77103 10.952C2.61782 10.8357 2.64318 10.5741 2.69388 10.0509L2.707 9.91551C2.72141 9.76682 2.72861 9.69248 2.70717 9.62354C2.68574 9.55461 2.63809 9.49889 2.54278 9.38744L2.45602 9.28599C2.12065 8.89381 1.95296 8.69773 2.01148 8.50955C2.07 8.32136 2.31597 8.26571 2.80791 8.15441L2.93518 8.12561C3.07497 8.09398 3.14487 8.07817 3.20099 8.03556C3.25711 7.99296 3.29311 7.92839 3.36509 7.79925L3.43063 7.68168Z'
+										stroke='#000000'
+										stroke-width='1.5'
+									></path>{' '}
+									<path
+										d='M5 20.3884H7.25993C8.27079 20.3884 9.29253 20.4937 10.2763 20.6964C12.0166 21.0549 13.8488 21.0983 15.6069 20.8138C16.4738 20.6734 17.326 20.4589 18.0975 20.0865C18.7939 19.7504 19.6469 19.2766 20.2199 18.7459C20.7921 18.216 21.388 17.3487 21.8109 16.6707C22.1736 16.0894 21.9982 15.3762 21.4245 14.943C20.7873 14.4619 19.8417 14.462 19.2046 14.9433L17.3974 16.3084C16.697 16.8375 15.932 17.3245 15.0206 17.4699C14.911 17.4874 14.7962 17.5033 14.6764 17.5172M14.6764 17.5172C14.6403 17.5214 14.6038 17.5254 14.5668 17.5292M14.6764 17.5172C14.8222 17.486 14.9669 17.396 15.1028 17.2775C15.746 16.7161 15.7866 15.77 15.2285 15.1431C15.0991 14.9977 14.9475 14.8764 14.7791 14.7759C11.9817 13.1074 7.62942 14.3782 5 16.2429M14.6764 17.5172C14.6399 17.525 14.6033 17.5292 14.5668 17.5292M14.5668 17.5292C14.0434 17.5829 13.4312 17.5968 12.7518 17.5326'
+										stroke='#000000'
+										stroke-width='1.5'
+										stroke-linecap='round'
+									></path>{' '}
+									<rect
+										x='2'
+										y='14'
+										width='3'
+										height='8'
+										rx='1.5'
+										stroke='#000000'
+										stroke-width='1.5'
+									></rect>{' '}
+								</g>
+							</svg>
+						),
+						title: 'Assistente',
+						description:
+							'Responder dúvidas, agendar ou confirmar consultas/atendimentos.',
+					},
+					{
+						icon: (
+							<svg
+								fill='#000000'
+								viewBox='0 0 24 24'
+								className='h-12 w-12 fill-current'
+							>
+								<g id='SVGRepo_bgCarrier' stroke-width='0'></g>
+								<g
+									id='SVGRepo_tracerCarrier'
+									stroke-linecap='round'
+									stroke-linejoin='round'
+								></g>
+								<g id='SVGRepo_iconCarrier'>
+									<path d='M20.9,6.471a2.555,2.555,0,0,0-.062-2.524A3.424,3.424,0,0,0,17.756,2.9,3.542,3.542,0,0,0,14.5,1a3.8,3.8,0,0,0-2.5.9A3.8,3.8,0,0,0,9.5,1,3.542,3.542,0,0,0,6.244,2.9,3.433,3.433,0,0,0,3.16,3.947,2.555,2.555,0,0,0,3.1,6.471C2.123,7.1,1,8.568,1,12s1.123,4.9,2.1,5.529a2.555,2.555,0,0,0,.062,2.524A3.437,3.437,0,0,0,6.244,21.1,3.542,3.542,0,0,0,9.5,23h5a3.542,3.542,0,0,0,3.256-1.9,3.425,3.425,0,0,0,3.084-1.049,2.555,2.555,0,0,0,.062-2.524C21.877,16.9,23,15.432,23,12S21.877,7.1,20.9,6.471ZM14.5,3a1.623,1.623,0,0,1,1.407.679L13.586,6H13V4C13,3.468,13.7,3,14.5,3Zm-5,0c.8,0,1.5.468,1.5,1V6h-.586L8.093,3.679A1.623,1.623,0,0,1,9.5,3Zm10,13a1,1,0,0,0-.848,1.53c.641,1.026.541,1.385.542,1.385a3.21,3.21,0,0,1-2,.105A1,1,0,0,0,16,20c0,.532-.7,1-1.5,1H13V19a1,1,0,0,0-2,0v2H9.5C8.7,21,8,20.532,8,20a1,1,0,0,0-1-1,1.05,1.05,0,0,0-.192.019,3.233,3.233,0,0,1-2-.1s-.1-.361.54-1.39a1,1,0,0,0,.022-.974A1.042,1.042,0,0,0,4.541,16C4.008,15.951,3,15.05,3,12S4.008,8.049,4.5,8a1,1,0,0,0,.848-1.53c-.641-1.026-.541-1.385-.542-1.385a2.843,2.843,0,0,1,1.715-.149L9.293,7.707A1,1,0,0,0,10,8h1v3H9.414L8,9.586V9A1,1,0,0,0,6,9v1c0,.672.523.837,1.586,2L6.293,13.293c-.448.448-.241.959-.293,1.707a1,1,0,0,0,2,0v-.586L9.414,13H11v2a1,1,0,0,0,2,0V13h1.586L16,14.414V15a1,1,0,0,0,2,0c-.052-.752.159-1.255-.293-1.707L16.414,12C17.449,10.869,18,10.672,18,10V9a1,1,0,0,0-2,0v.586L14.586,11H13V8h1a1,1,0,0,0,.707-.293l2.771-2.771a2.867,2.867,0,0,1,1.714.144s.1.361-.54,1.39a1,1,0,0,0-.022.974A1.042,1.042,0,0,0,19.459,8c.533.05,1.541.951,1.541,4S19.992,15.951,19.5,16Z'></path>
+								</g>
+							</svg>
+						),
+						title: 'Aprendizado Contínuo',
+						description:
+							'Aprimoramento contínuo a interação do dia-a-dia.',
+					},
+					{
+						icon: <Users className='h-12 w-12' />,
+						title: 'Suporte',
+						description:
+							'Estamos disponíveis para suporte e dúvidas.',
+					},
+					{
+						icon: (
+							<svg
+								fill='#000000'
+								xmlns='http://www.w3.org/2000/svg'
+								className='h-12 w-12 fill-current'
+								viewBox='0 0 100 100'
+								enable-background='new 0 0 100 100'
+							>
+								<g id='SVGRepo_bgCarrier' stroke-width='0'></g>
+								<g
+									id='SVGRepo_tracerCarrier'
+									stroke-linecap='round'
+									stroke-linejoin='round'
+								></g>
+								<g id='SVGRepo_iconCarrier'>
+									{' '}
+									<g>
+										{' '}
+										<path d='M73.9,27c-3.9,0-7.1,3.2-7.1,7.1c0,0.6,0.1,1.1,0.2,1.6l-6.7,4.4c-2.1-2.4-5.1-4-8.6-4 c-2.6,0-5,0.9-6.9,2.4l-11-7.6c0.7-2.9-0.8-6.1-3.6-7.4c-3.3-1.5-7.2-0.1-8.7,3.1s-0.1,7.2,3.1,8.7c1.7,0.8,3.6,0.8,5.3,0.1 l11.3,7.9c-0.5,1.2-0.8,2.6-0.8,4c0,0.8,0.1,1.5,0.2,2.3l-6.9,2.5c-0.9-1-2.1-1.8-3.6-2.2c-3.9-1.1-8,1.2-9.1,5.2 c-1.1,3.9,1.2,8,5.2,9.1c3.9,1.1,8-1.2,9.1-5.2c0.1-0.4,0.2-0.8,0.2-1.2l7.9-2.8c2.1,2.2,5,3.6,8.2,3.6c0.3,0,0.6,0,0.9,0l1.1,5.6 c-2.1,1.7-3.3,4.4-3,7.2c0.4,4.6,4.5,7.9,9.1,7.5c4.6-0.4,7.9-4.5,7.5-9.1c-0.4-4.1-3.7-7.2-7.7-7.5l-1.2-5.9 c2.8-2,4.7-5.4,4.7-9.1c0-0.6-0.1-1.2-0.1-1.7l7.9-5.2c1,0.5,2.1,0.8,3.2,0.8c3.9,0,7.1-3.2,7.1-7.1C81,30.2,77.8,27,73.9,27z M51.7,54.6c-4,0-7.2-3.2-7.2-7.2c0-4,3.2-7.2,7.2-7.2c4,0,7.2,3.2,7.2,7.2C58.9,51.3,55.7,54.6,51.7,54.6z'></path>{' '}
+										<circle
+											cx='51.8'
+											cy='47.4'
+											r='3.2'
+										></circle>{' '}
+									</g>{' '}
+								</g>
+							</svg>
+						),
+						title: 'Integração',
+						description:
+							'Integração a sistemas de clínicas - Clinicorp',
+					},
+					{
+						icon: (
+							<svg
+								viewBox='0 0 24 24'
+								fill='none'
+								className='h-12 w-12 fill-current'
+							>
+								<g id='SVGRepo_bgCarrier' stroke-width='0'></g>
+								<g
+									id='SVGRepo_tracerCarrier'
+									stroke-linecap='round'
+									stroke-linejoin='round'
+								></g>
+								<g id='SVGRepo_iconCarrier'>
+									{' '}
+									<path
+										fill-rule='evenodd'
+										clip-rule='evenodd'
+										d='M3.50002 12C3.50002 7.30558 7.3056 3.5 12 3.5C16.6944 3.5 20.5 7.30558 20.5 12C20.5 16.6944 16.6944 20.5 12 20.5C10.3278 20.5 8.77127 20.0182 7.45798 19.1861C7.21357 19.0313 6.91408 18.9899 6.63684 19.0726L3.75769 19.9319L4.84173 17.3953C4.96986 17.0955 4.94379 16.7521 4.77187 16.4751C3.9657 15.176 3.50002 13.6439 3.50002 12ZM12 1.5C6.20103 1.5 1.50002 6.20101 1.50002 12C1.50002 13.8381 1.97316 15.5683 2.80465 17.0727L1.08047 21.107C0.928048 21.4637 0.99561 21.8763 1.25382 22.1657C1.51203 22.4552 1.91432 22.5692 2.28599 22.4582L6.78541 21.1155C8.32245 21.9965 10.1037 22.5 12 22.5C17.799 22.5 22.5 17.799 22.5 12C22.5 6.20101 17.799 1.5 12 1.5ZM14.2925 14.1824L12.9783 15.1081C12.3628 14.7575 11.6823 14.2681 10.9997 13.5855C10.2901 12.8759 9.76402 12.1433 9.37612 11.4713L10.2113 10.7624C10.5697 10.4582 10.6678 9.94533 10.447 9.53028L9.38284 7.53028C9.23954 7.26097 8.98116 7.0718 8.68115 7.01654C8.38113 6.96129 8.07231 7.046 7.84247 7.24659L7.52696 7.52195C6.76823 8.18414 6.3195 9.2723 6.69141 10.3741C7.07698 11.5163 7.89983 13.314 9.58552 14.9997C11.3991 16.8133 13.2413 17.5275 14.3186 17.8049C15.1866 18.0283 16.008 17.7288 16.5868 17.2572L17.1783 16.7752C17.4313 16.5691 17.5678 16.2524 17.544 15.9269C17.5201 15.6014 17.3389 15.308 17.0585 15.1409L15.3802 14.1409C15.0412 13.939 14.6152 13.9552 14.2925 14.1824Z'
+										fill='#000000'
+									></path>{' '}
+								</g>
+							</svg>
+						),
+						title: 'WhatsApp',
+						description:
+							'Tudo diretamente pelo seu WhatsApp, a Clara não precisa de app.',
+					},
+				]}
+			/>
 
-      <div id="pricing" />
-      <PricingGrid
-        title="Pricing"
-        subtitle="Flexible plans for every team."
-        items={[
-          {
-            title: "Basic",
-            price: "Free",
-            description: "For individuals and small projects.",
-            features: [
-              "Full source code",
-              "100% Open-source",
-              "Community support",
-              "Free forever",
-              "No credit card required",
-            ],
-            buttonText: "Get Started",
-            buttonHref: stackServerApp.urls.signUp,
-          },
-          {
-            title: "Pro",
-            price: "$0.00",
-            description: "Ideal for growing teams and businesses.",
-            features: [
-              "Full source code",
-              "100% Open-source",
-              "Community support",
-              "Free forever",
-              "No credit card required",
-            ],
-            buttonText: "Upgrade to Pro",
-            isPopular: true,
-            buttonHref: stackServerApp.urls.signUp,
-          },
-          {
-            title: "Enterprise",
-            price: "Still Free",
-            description: "For large organizations.",
-            features: [
-              "Full source code",
-              "100% Open-source",
-              "Community support",
-              "Free forever",
-              "No credit card required",
-            ],
-            buttonText: "Contact Us",
-            buttonHref: stackServerApp.urls.signUp,
-          },
-        ]}
-      />
-    </>
-  );
+			<div id='pricing' />
+			<PricingGrid
+				title='Preços'
+				subtitle='Flexible plans for every team.'
+				items={[
+					{
+						title: 'Inicial',
+						price: 'R$345.00',
+						description:
+							'Para uso inicial de pequenas clínicas e consultórios.',
+						features: [
+							'Assistente virtual completa',
+							'Suporte',
+							'Integração com seu sistema de gestão',
+							'300 atendimentos por mês',
+							'Teste grátis de 7 dias.',
+						],
+						buttonText: 'Registre-se',
+						buttonHref: stackServerApp.urls.signUp,
+					},
+					{
+						title: 'Básico',
+						price: 'R$435.00',
+						description:
+							'Para uso de clínicas e consultórios em expansão.',
+						features: [
+							'Mesmo que o plano inicial',
+							'600 atendimentos por mês',
+							'IA pode ser nomeada',
+						],
+						buttonText: 'Adquira o plano básico',
+						isPopular: true,
+						buttonHref: stackServerApp.urls.signUp,
+					},
+					{
+						title: 'Sob medida',
+						price: 'R$525.00',
+						description:
+							'Ideal para empresas com maior uso das nossas ferramentas.',
+						features: [
+							'Mesmo que o plano básico',
+							'900 atendimentos por mês',
+						],
+						buttonText: 'Adquira o plano Sob medida',
+						isPopular: false,
+						buttonHref: stackServerApp.urls.signUp,
+					},
+					{
+						title: 'Plano Individualizado',
+						price: 'Variável',
+						description: 'Para grandes organizações.',
+						features: [
+							'Suporte 24 horas',
+							'Atendimentos por mês personalizado',
+							'Soluções personalizadas',
+						],
+						buttonText: 'Contate-nos',
+            isPopular: false,
+						buttonHref: stackServerApp.urls.signUp,
+					},
+				]}
+			/>
+		</>
+	)
 }

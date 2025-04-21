@@ -18,7 +18,7 @@ export function Hero(props: {
       <div className="container flex max-w-[64rem] flex-col items-center gap-4 text-center">
         <Link
           href={props.capsuleLink}
-          className="rounded-2xl bg-muted px-4 py-1.5 text-sm font-medium"
+          className="rounded-2xl bg-muted px-4 py-1.5 text-4xl font-medium"
           target="_blank"
         >
           {props.capsuleText}
@@ -41,7 +41,7 @@ export function Hero(props: {
             href={props.secondaryCtaLink}
             target="_blank"
             rel="noreferrer"
-            className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+            className={cn(buttonVariants({ variant: "whatsapp", size: "lg" }))}
           >
             {props.secondaryCtaText}
           </Link>

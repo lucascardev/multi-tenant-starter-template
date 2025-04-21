@@ -27,14 +27,14 @@ function SignInSignUpButtons() {
         href={app.urls.signIn}
         className={buttonVariants({ variant: "secondary" })}
       >
-        Sign In
+        Log In
       </Link>
 
       <Link
         href={app.urls.signUp}
         className={buttonVariants({ variant: "default" })}
       >
-        Sign Up
+        Cadastro
       </Link>
     </>
   );
@@ -138,7 +138,7 @@ export function LandingPageHeader(props: NavProps) {
             onClick={() => setShowMobileMenu(!showMobileMenu)}
           >
             {showMobileMenu ? (
-              <X className="h-6 w-6" />
+              <X className="h-6 w-6" /> 
             ) : (
               <Menu className="h-6 w-6" />
             )}
