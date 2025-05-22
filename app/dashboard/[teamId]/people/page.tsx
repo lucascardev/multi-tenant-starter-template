@@ -232,7 +232,7 @@ export default function PeoplePage() {
         <Card className="max-w-lg border-red-500/50 dark:border-red-500/30 bg-card">
             <CardHeader>
                 <CardTitle className="text-destructive text-lg flex items-center">
-                    <LogOut className="mr-2 h-5 w-5" /> Sair do Time "{team.displayName}"
+                    <LogOut className="mr-2 h-5 w-5" /> Sair do Time &quot;{team.displayName}&quot;
                 </CardTitle>
             </CardHeader>
             <CardContent>

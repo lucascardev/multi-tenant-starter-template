@@ -210,7 +210,7 @@ export default function MyPlanPage() {
           <DialogHeader>
             <DialogTitle>Ativar Plano: {selectedPlanForActivation?.plan_name}</DialogTitle>
             <DialogDescription>
-              Para ativar o plano "{selectedPlanForActivation?.plan_name}", por favor, insira o código de ativação fornecido.
+              Para ativar o plano &quot;{selectedPlanForActivation?.plan_name}&quot;, por favor, insira o código de ativação fornecido.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleActivatePlan} className="grid gap-4 py-4">

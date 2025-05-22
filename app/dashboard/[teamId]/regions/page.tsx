@@ -715,7 +715,7 @@ export default function WhatsAppInstancesPage() {
 											}
 											className='underline text-primary hover:text-primary/80'
 										>
-											Crie uma em "Configurações IA"
+											Crie uma em &quot;Configurações IA&quot;
 										</a>{' '}
 										primeiro.
 									</p>
