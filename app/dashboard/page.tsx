@@ -1,9 +1,9 @@
-import { PageClient } from "./page-client";
+import DashboardRedirectPage from "./page-client"; // Importa a exportação padrão
 
 export const metadata = {
-  title: "Dashboard - Stack Template",
+  title: "ClaraIA - Recepcionista Virtual",
 };
 
 export default function Dashboard() {
-  return <PageClient />;
+  return <DashboardRedirectPage />; // Usa o nome importado
 }
