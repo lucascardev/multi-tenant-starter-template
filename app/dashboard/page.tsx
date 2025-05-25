@@ -1,5 +1,6 @@
 import DashboardRedirectPage from "./page-client"; // Importa a exportação padrão
 
+
 export const metadata = {
   title: "ClaraIA - Recepcionista Virtual",
 };
