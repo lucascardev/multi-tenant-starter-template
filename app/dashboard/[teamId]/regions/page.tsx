@@ -86,6 +86,21 @@ interface SubscriptionInfo {
 const LIST_POLLING_INTERVAL = 15000 // Polling da lista completa a cada 15 segundos
 const QR_POLLING_INTERVAL = 5000 // Polling do QR Code focado a cada 5 segundos
 
+const instanceStatusBadgeVariantMap: ReadonlyMap<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = new Map([
+    ['connected', 'success'],
+    ['disconnected', 'destructive'],
+    ['disconnected_qr_expired', 'destructive'],
+	['error_logged_out', 'destructive'],
+	['error_restarting', 'destructive'],
+	['error_qr_processing', 'destructive'],
+    ['error', 'destructive'],
+    ['needs_qr', 'warning'],
+    ['connecting', 'default'],
+    ['restarting', 'default'],
+    ['pending_creation', 'outline']
+]);
+
+
 export default function WhatsAppInstancesPage() {
 	const user = useUser({ or: 'redirect' })
 	const params = useParams<{ teamId: string }>()
@@ -563,42 +578,11 @@ export default function WhatsAppInstancesPage() {
 		}
 	}
 
-	const getStatusBadgeVariant = (
-		status?: string
-	):
-		| 'default'
-		| 'secondary'
-		| 'destructive'
-		| 'outline'
-		| 'success'
-		| 'warning' => {
-		switch (status?.toLowerCase()) {
-			case 'connected':
-				return 'success'
-			case 'disconnected':
-				return 'destructive'
-			case 'disconnected_qr_expired':
-				return 'destructive'
-			case 'error_logged_out':
-				return 'destructive'
-			case 'error_restarting':
-				return 'destructive'
-			case 'error_qr_processing':
-				return 'destructive'
-			case 'error':
-				return 'destructive'
-			case 'needs_qr':
-				return 'warning'
-			case 'connecting':
-				return 'default'
-			case 'restarting':
-				return 'default'
-			case 'pending_creation':
-				return 'outline'
-			default:
-				return 'secondary'
-		}
-	}
+const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
+    if (!status) return 'secondary';
+    return instanceStatusBadgeVariantMap.get(status.toLowerCase()) || 'secondary';
+};
+
 
 	if (isLoadingInitialData && instances.length === 0) {
 		// Mostra skeleton apenas no carregamento inicial da lista
@@ -857,7 +841,7 @@ export default function WhatsAppInstancesPage() {
 													{instance.instance_name}
 												</CardTitle>
 												<Badge
-													variant={getStatusBadgeVariant(
+													variant={getStatusBadgeVariantRegions(
 														instance.status
 													)}
 													className='whitespace-nowrap text-xs'

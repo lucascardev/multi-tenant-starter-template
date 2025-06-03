@@ -13,6 +13,16 @@ import { Button } from '@/components/ui/button'; // Para botão de tentar novame
 
 const logger = console;
 
+const statusBadgeVariantMap: ReadonlyMap<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = new Map([
+    ['connected', 'success'],
+    ['disconnected', 'destructive'],
+    ['needs_qr', 'warning'],
+    ['connecting', 'default'],
+    ['error', 'destructive'],
+    // Adicione outros status conforme necessário
+]);
+
+
 interface DashboardStats {
   activeInstances: number;
   totalPersonas: number;
@@ -103,16 +113,10 @@ export default function TeamDashboardPage() { // Renomeado para clareza
     // Se o layout não redirecionar e 'team' continuar null, esta página mostrará o estado de erro/carregamento.
   }, [team, fetchDashboardData]); // Adicionado fetchDashboardData às dependências
 
-  const getStatusBadgeVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
-    switch (status?.toLowerCase()) {
-      case 'connected': return 'success';
-      case 'disconnected': return 'destructive';
-      case 'needs_qr': return 'warning';
-      case 'connecting': return 'default';
-      case 'error': return 'destructive';
-      default: return 'secondary';
-    }
-  };
+ const getStatusBadgeVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
+    if (!status) return 'secondary';
+    return statusBadgeVariantMap.get(status.toLowerCase()) || 'secondary';
+};
 
   if (isLoading) {
     return (
