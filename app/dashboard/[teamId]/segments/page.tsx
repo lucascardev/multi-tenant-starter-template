@@ -437,7 +437,7 @@ export default function IntegrationsPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <p className="text-xs text-muted-foreground mt-1">Apenas calendários com permissão de escrita são listados. 'Primary' é o calendário padrão da sua conta Google.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Apenas calendários com permissão de escrita são listados. &apos;Primary&apos; é o calendário padrão da sua conta Google.</p>
                         </div>
 
                         <fieldset className="pt-3 space-y-3">
