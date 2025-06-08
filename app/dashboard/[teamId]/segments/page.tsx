@@ -202,7 +202,7 @@ export default function IntegrationsPage() {
     setIsGoogleLoading(true); // Adicionar um estado de loading para o botão
     try {
         // 1. Frontend chama a API para obter a URL de autorização do Google
-        const response = await apiClient.get<{ authUrl: string }>('/integrations/google/initiate-auth-url'); // Novo endpoint
+        const response = await apiClient.get<{ authUrl: string }>('/integrations/google/auth'); // Novo endpoint
         // 2. Frontend redireciona para a URL do Google recebida
         window.location.href = response.data.authUrl;
     } catch (error: any) {
