@@ -11,9 +11,10 @@ import { toast } from "sonner";
 import apiClient from "@/lib/axios";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle, Zap, Link as LinkIcon, LogOut, ListChecks, Contact2 } from "lucide-react"; // LinkIcon, LogOut, ListChecks, Contact2
+import { AlertCircle, CheckCircle, Zap, Link as LinkIcon, LogOut, ListChecks, Contact2, Settings } from "lucide-react"; // LinkIcon, LogOut, ListChecks, Contact2
+import Image from "next/image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSearchParams, useRouter, usePathname } from "next/navigation"; // Adicionado usePathname
+import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation"; // Adicionado usePathname
 
 const logger = console;
 
@@ -53,6 +54,7 @@ export default function IntegrationsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPathname = usePathname(); // Para remover query params
+  const params = useParams<{ teamId: string }>(); // Para o redirect do Google
 
   const [clinicorpFormData, setClinicorpFormData] = useState<ClinicorpFormData>({
     isActive: false, username: "", subscriberId: "", companyId: "",
@@ -69,9 +71,11 @@ export default function IntegrationsPage() {
   const [isFetchingGoogleConfig, setIsFetchingGoogleConfig] = useState(true);
   const [userCalendars, setUserCalendars] = useState<GoogleCalendarListItem[]>([]);
 
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+
   const fetchClinicorpConfig = useCallback(async () => {
     if (!user) return;
-    setIsFetchingClinicorpConfig(true);
     try {
       const response = await apiClient.get<ClinicorpFormData>('/integrations/clinicorp');
       const config = response.data;
@@ -97,7 +101,6 @@ export default function IntegrationsPage() {
 
   const fetchGoogleConfig = useCallback(async () => {
     if (!user) return;
-    setIsFetchingGoogleConfig(true);
     setUserCalendars([]); // Limpa calendários antes de buscar novos
     try {
       const response = await apiClient.get<GoogleConfigData>('/integrations/google/config');
@@ -123,37 +126,49 @@ export default function IntegrationsPage() {
     }
   }, [user]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (user) {
-      fetchClinicorpConfig();
-      fetchGoogleConfig();
+      setIsPageLoading(true);
+      Promise.all([fetchClinicorpConfig(), fetchGoogleConfig()])
+        .catch((error) => { // Adiciona um catch geral para o Promise.all
+            logger.error("Erro ao buscar todas as configurações de integração:", error);
+            toast.error("Ocorreu um erro ao carregar todas as configurações de integração.");
+        })
+        .finally(() => {
+            setIsFetchingClinicorpConfig(false); // Garante que os loadings individuais sejam falsos
+            setIsFetchingGoogleConfig(false);
+            setIsPageLoading(false);
+        });
     }
   }, [user, fetchClinicorpConfig, fetchGoogleConfig]);
 
   useEffect(() => {
     const googleAuthSuccess = searchParams.get('google_auth_success');
     const googleAuthError = searchParams.get('google_auth_error');
+    const teamIdParam = params.teamId || "defaultTeamId"; // Garante que teamId não seja undefined
 
     if (googleAuthSuccess) {
-      toast.success("Conta Google conectada com sucesso! Selecione seu calendário principal e salve.");
-      fetchGoogleConfig();
-      router.replace(currentPathname);
+      toast.success("Conta Google conectada com sucesso! Ajuste suas preferências e salve.");
+      fetchGoogleConfig(); // Re-busca para atualizar a UI com dados do Google
+      router.replace(`/dashboard/${teamIdParam}/segments`);
     }
     if (googleAuthError) {
       const decodedError = decodeURIComponent(googleAuthError);
       toast.error(`Falha ao conectar conta Google: ${decodedError === 'access_denied' ? 'Permissão negada.' : `Erro (${decodedError || 'desconhecido'})`}`);
-      fetchGoogleConfig();
-      router.replace(currentPathname);
+      fetchGoogleConfig(); // Re-busca mesmo em erro para limpar o estado
+      router.replace(`/dashboard/${teamIdParam}/segments`);
     }
-  }, [searchParams, fetchGoogleConfig, router, currentPathname]);
+  }, [searchParams, fetchGoogleConfig, router, params.teamId]);
 
   const handleClinicorpInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setClinicorpFormData((prev) => ({ ...prev, [name]: value }));
   };
+  
   const handleClinicorpSwitchChange = (checked: boolean, name: keyof ClinicorpFormData) => {
     setClinicorpFormData(prev => ({ ...prev, [name]: checked }));
   };
+
   const handleClinicorpSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) { toast.error("Sessão não encontrada."); return; }
@@ -182,9 +197,24 @@ export default function IntegrationsPage() {
     }
   };
 
-  const handleGoogleConnect = () => {
+  const handleGoogleConnect = async () => {
     if (!user) return;
-    window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/integrations/google/auth`;
+    setIsGoogleLoading(true); // Adicionar um estado de loading para o botão
+    try {
+        // 1. Frontend chama a API para obter a URL de autorização do Google
+        const response = await apiClient.get<{ authUrl: string }>('/integrations/google/initiate-auth-url'); // Novo endpoint
+        // 2. Frontend redireciona para a URL do Google recebida
+        window.location.href = response.data.authUrl;
+    } catch (error: any) {
+        toast.error(error.response?.data?.message || "Falha ao iniciar conexão com Google.");
+        logger.error("Erro ao iniciar conexão Google:", error);
+    } finally {
+        setIsGoogleLoading(false);
+    }
+};
+
+  const handleGoogleSwitchChange = (checked: boolean, name: keyof Pick<GoogleConfigData, "syncAppointmentsToCalendar" | "readCalendarForAvailability" | "syncContactsToGoogle" | "isActive">) => { // Mais específico
+    setGoogleConfig(prev => ({ ...prev, [name]: checked }));
   };
 
   const handleGoogleConfigInputChange = (
@@ -240,13 +270,16 @@ export default function IntegrationsPage() {
     }
   };
 
-  if (isFetchingClinicorpConfig || isFetchingGoogleConfig) {
+  
+  if (isPageLoading) { // Usando o estado de loading global
     return (
         <div className="p-4 md:p-6 space-y-8">
             <Skeleton className="h-10 w-1/3 mb-4"/>
             <Skeleton className="h-8 w-2/3 mb-6"/>
-            <Card className="max-w-2xl mx-auto"><CardHeader><Skeleton className="h-6 w-1/2 mb-2"/><Skeleton className="h-4 w-3/4"/></CardHeader><CardContent className="space-y-4"><Skeleton className="h-16 w-full"/><Skeleton className="h-10 w-32"/></CardContent></Card>
-            <Card className="max-w-2xl mx-auto"><CardHeader><Skeleton className="h-6 w-1/2 mb-2"/><Skeleton className="h-4 w-3/4"/></CardHeader><CardContent className="space-y-4"><Skeleton className="h-16 w-full"/><Skeleton className="h-10 w-32"/></CardContent></Card>
+            <div className="grid md:grid-cols-2 gap-6">
+                <Card className="max-w-2xl mx-auto"><CardHeader><Skeleton className="h-6 w-1/2 mb-2"/><Skeleton className="h-4 w-3/4"/></CardHeader><CardContent className="space-y-4"><Skeleton className="h-16 w-full"/><Skeleton className="h-10 w-32"/></CardContent></Card>
+                <Card className="max-w-2xl mx-auto"><CardHeader><Skeleton className="h-6 w-1/2 mb-2"/><Skeleton className="h-4 w-3/4"/></CardHeader><CardContent className="space-y-4"><Skeleton className="h-16 w-full"/><Skeleton className="h-10 w-32"/></CardContent></Card>
+            </div>
         </div>
     );
   }
@@ -339,127 +372,113 @@ export default function IntegrationsPage() {
         )}
       </Card>
 
-      {/* Card Google (Calendar & Contacts) */}
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl flex items-center">
-            <img src="/google-icon.png" alt="Google" className="mr-3 h-7 w-7" />
-            Integração com Google
-          </CardTitle>
-          <CardDescription>
-            Conecte sua conta Google para sincronizar agenda e contatos, melhorando a organização e o alcance.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!googleConfig?.isActive ? (
-            <div className="text-center space-y-4 py-6">
-              <p className="text-muted-foreground">Nenhuma conta Google conectada.</p>
-              <Button onClick={handleGoogleConnect} disabled={isGoogleLoading} size="lg">
-                <LinkIcon className="mr-2 h-5 w-5" /> Conectar com Google
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleSaveGoogleConfig} className="space-y-6">
-              <div className="p-3 bg-green-50 border border-green-200 rounded-md dark:bg-green-900/20 dark:border-green-700">
-                <p className="text-sm text-green-700 dark:text-green-300 flex items-center">
-                  <CheckCircle className="h-5 w-5 mr-2"/> Conectado como: <span className="font-medium ml-1">{googleConfig.email || "Usuário Google"}</span>
-                </p>
+     
+        {/* Card Google */}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle className="text-2xl flex items-center">
+              <Image src="/google-icon.png" alt="Google" width={28} height={28} className="mr-3" />
+              Integração com Google
+            </CardTitle>
+            <CardDescription>
+              Sincronize agenda e contatos com sua conta Google.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!googleConfig?.isActive ? (
+              <div className="text-center space-y-4 py-8">
+                <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-muted-foreground mb-4">Nenhuma conta Google conectada.</p>
+                <Button onClick={handleGoogleConnect} disabled={isGoogleLoading} size="lg">
+                  <LinkIcon className="mr-2 h-5 w-5" /> Conectar com Google
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveGoogleConfig} className="space-y-6">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md dark:bg-green-900/30 dark:border-green-700">
+                  <p className="text-sm text-green-700 dark:text-green-300 flex items-center">
+                    <CheckCircle className="h-5 w-5 mr-2"/> Conectado como: <span className="font-medium ml-1">{googleConfig.email || "Usuário Google"}</span>
+                  </p>
+                </div>
                 {googleConfig.errorMessage && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center">
-                        <AlertCircle className="h-3 w-3 mr-1"/> Erro: {googleConfig.errorMessage}
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 p-2 bg-red-50 dark:bg-red-900/20 rounded-md flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1 flex-shrink-0"/> Erro na integração: {googleConfig.errorMessage}
                     </p>
                 )}
-              </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="selectedCalendarId" className="font-medium">Calendário Principal para Integração</Label>
-                {userCalendars.length > 0 ? (
-                  <Select
-                    value={googleConfig.selectedCalendarId || ""}
-                    onValueChange={(value) => handleGoogleConfigInputChange("selectedCalendarId", value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um calendário com permissão de escrita" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userCalendars.map(cal => (
-                        <SelectItem key={cal.id} value={cal.id}>
-                          {cal.summary} {cal.primary && "(Principal da Conta Google)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                    {isFetchingGoogleConfig ? "Carregando calendários..." : "Nenhum calendário com permissão de escrita encontrado ou falha ao carregar. Tente reconectar sua conta Google."}
-                  </p>
-                )}
-              </div>
-
-              <fieldset className="pt-2 space-y-3">
-                <legend className="text-md font-semibold mb-2 text-foreground">Funcionalidades Google</legend>
-                 <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 pt-2">
                     <Switch
-                        id="googleIsActiveToggle" // ID único para o switch
+                        id="googleIsActiveToggle"
                         checked={googleConfig.isActive}
                         onCheckedChange={(checked) => handleGoogleConfigInputChange("isActive", checked)}
                     />
-                    <Label htmlFor="googleIsActiveToggle" className="font-normal">Manter integração Google Ativa</Label>
-                </div>
-                <div className="pl-4 border-l-2 border-border dark:border-gray-700 py-2 space-y-3">
-                    <Label className="font-medium text-sm text-muted-foreground flex items-center">
-                        <img src="/google-calendar-icon.svg" alt="Google Calendar" className="mr-2 h-4 w-4" />
-                        Google Calendar:
-                    </Label>
-                    <div className="flex items-center space-x-3">
-                      <Switch
-                        id="syncAppointmentsToCalendar"
-                        checked={googleConfig.syncAppointmentsToCalendar}
-                        onCheckedChange={(checked) => handleGoogleConfigInputChange("syncAppointmentsToCalendar", checked)}
-                        disabled={!googleConfig.selectedCalendarId || !googleConfig.isActive}
-                      />
-                      <Label htmlFor="syncAppointmentsToCalendar" className={!googleConfig.selectedCalendarId || !googleConfig.isActive ? "text-muted-foreground cursor-not-allowed" : "font-normal"}>
-                        Criar/atualizar eventos no Google Calendar
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Switch
-                        id="readCalendarForAvailability"
-                        checked={googleConfig.readCalendarForAvailability}
-                        onCheckedChange={(checked) => handleGoogleConfigInputChange("readCalendarForAvailability", checked)}
-                        disabled={!googleConfig.selectedCalendarId || !googleConfig.isActive}
-                      />
-                      <Label htmlFor="readCalendarForAvailability" className={!googleConfig.selectedCalendarId || !googleConfig.isActive ? "text-muted-foreground cursor-not-allowed" : "font-normal"}>
-                        Permitir que a IA leia o calendário para disponibilidade
-                      </Label>
-                    </div>
+                    <Label htmlFor="googleIsActiveToggle" className="font-medium">Manter integração Google Ativa</Label>
                 </div>
 
-                <div className="pl-4 border-l-2 border-border dark:border-gray-700 py-2 space-y-3">
-                    <Label className="font-medium text-sm text-muted-foreground flex items-center">
-                        <Contact2 className="mr-2 h-4 w-4" />
-                        Google Contacts:
-                    </Label>
-                    <div className="flex items-center space-x-3">
-                        <Switch
-                            id="syncContactsToGoogle"
-                            checked={googleConfig.syncContactsToGoogle}
-                            onCheckedChange={(checked) => handleGoogleConfigInputChange("syncContactsToGoogle", checked)}
-                            disabled={!googleConfig.isActive}
-                        />
-                        <Label htmlFor="syncContactsToGoogle" className={!googleConfig.isActive ? "text-muted-foreground cursor-not-allowed" : "font-normal"}>
-                            Sincronizar contatos de pacientes ao Google Contacts
-                        </Label>
-                    </div>
-                </div>
-              </fieldset>
-              <div className="flex flex-col sm:flex-row gap-3 pt-3">
-                <Button type="submit" disabled={isGoogleLoading || !googleConfig.isActive || (!googleConfig.selectedCalendarId && (googleConfig.syncAppointmentsToCalendar || googleConfig.readCalendarForAvailability))} className="flex-grow">
-                  {isGoogleLoading ? "Salvando..." : "Salvar Configuração Google"}
+
+                {googleConfig.isActive && (
+                    <>
+                        <div className="space-y-1">
+                        <Label htmlFor="selectedCalendarId" className="font-medium">Calendário Principal</Label>
+                        <Select
+                            value={googleConfig.selectedCalendarId || ""}
+                            onValueChange={(value) => handleGoogleConfigInputChange("selectedCalendarId", value)}
+                            disabled={userCalendars.length === 0 && !(googleConfig.selectedCalendarId === 'primary')}
+                        >
+                            <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecione um calendário..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="primary">Calendário Principal da Conta</SelectItem>
+                                {userCalendars.map(cal => (
+                                    <SelectItem key={cal.id} value={cal.id} disabled={cal.accessRole !== 'writer' && cal.accessRole !== 'owner'}>
+                                    {cal.summary} {cal.primary && "(Padrão Google)"}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">Apenas calendários com permissão de escrita são listados. 'Primary' é o calendário padrão da sua conta Google.</p>
+                        </div>
+
+                        <fieldset className="pt-3 space-y-3">
+                        <legend className="text-md font-semibold mb-1 text-foreground">Funcionalidades</legend>
+                        <div className="pl-4 border-l-2 border-border dark:border-neutral-700 py-2 space-y-3">
+                            <Label className="font-medium text-sm text-muted-foreground flex items-center">
+                                <Image src="/google-calendar-icon.svg" alt="Google Calendar" width={16} height={16} className="mr-2" />
+                                Google Calendar:
+                            </Label>
+                            <div className="flex items-center space-x-3">
+                                <Switch id="syncAppointmentsToCalendar" checked={googleConfig.syncAppointmentsToCalendar} onCheckedChange={(c) => handleGoogleSwitchChange(c, "syncAppointmentsToCalendar")} disabled={!googleConfig.selectedCalendarId}/>
+                                <Label htmlFor="syncAppointmentsToCalendar" className={!googleConfig.selectedCalendarId ? "text-muted-foreground" : "font-normal"}>Criar/atualizar eventos no Google Calendar</Label>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                                <Switch id="readCalendarForAvailability" checked={googleConfig.readCalendarForAvailability} onCheckedChange={(c) => handleGoogleSwitchChange(c, "readCalendarForAvailability")} disabled={!googleConfig.selectedCalendarId}/>
+                                <Label htmlFor="readCalendarForAvailability" className={!googleConfig.selectedCalendarId ? "text-muted-foreground" : "font-normal"}>Permitir que a IA leia o calendário para disponibilidade</Label>
+                            </div>
+                        </div>
+
+                        <div className="pl-4 border-l-2 border-border dark:border-neutral-700 py-2 space-y-3">
+                            <Label className="font-medium text-sm text-muted-foreground flex items-center">
+                                <Contact2 className="mr-2 h-4 w-4 text-blue-600" />
+                                Google Contacts:
+                            </Label>
+                            <div className="flex items-center space-x-3">
+                                <Switch id="syncContactsToGoogle" checked={googleConfig.syncContactsToGoogle} onCheckedChange={(c) => handleGoogleSwitchChange(c, "syncContactsToGoogle")} />
+                                <Label htmlFor="syncContactsToGoogle" className="font-normal">Sincronizar contatos de pacientes ao Google Contacts</Label>
+                            </div>
+                        </div>
+                        </fieldset>
+                    </>
+                )}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button type="submit" disabled={isGoogleLoading || (googleConfig.isActive && (!googleConfig.selectedCalendarId && (googleConfig.syncAppointmentsToCalendar || googleConfig.readCalendarForAvailability)))} className="flex-grow">
+                  <Settings className="mr-2 h-4 w-4" /> {isGoogleLoading ? "Salvando..." : "Salvar Configuração Google"}
                 </Button>
-                <Button type="button" variant="destructive" onClick={handleGoogleDisconnect} disabled={isGoogleLoading} className="flex-grow sm:flex-grow-0">
-                  <LogOut className="mr-2 h-4 w-4" /> Desconectar Conta Google
-                </Button>
+                {googleConfig.isActive && (
+                    <Button type="button" variant="outline" onClick={handleGoogleDisconnect} disabled={isGoogleLoading} className="flex-grow sm:flex-grow-0 text-destructive border-destructive hover:bg-destructive/10">
+                    <LogOut className="mr-2 h-4 w-4" /> Desconectar Google
+                    </Button>
+                )}
               </div>
             </form>
           )}
