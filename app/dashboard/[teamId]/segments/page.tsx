@@ -378,7 +378,7 @@ export default function IntegrationsPage() {
           <CardHeader>
             <CardTitle className="text-2xl flex flex-row">
               <Image src="/google-icon.png" alt="Google" width={28} height={28} className="mr-3" />
-              <p className="text-md">Integração com Google</p>
+              <p className="text-md mr-6">Integração com Google</p>
             </CardTitle>
             <CardDescription>
               Sincronize agenda e contatos com sua conta Google.
@@ -445,7 +445,7 @@ export default function IntegrationsPage() {
                         <div className="pl-4 border-l-2 border-border dark:border-neutral-700 py-2 space-y-3">
                             <Label className="font-medium text-sm text-muted-foreground flex flex-row">
                                 <Image src="/google-calendar-icon.svg" alt="Google Calendar" width={16} height={16} className="mr-2" />
-                              <p className="text-md">Google Calendar:</p>
+                              <p className="text-md mr-6">Google Calendar:</p>
                                 
                             </Label>
                             <div className="flex items-center space-x-3">
