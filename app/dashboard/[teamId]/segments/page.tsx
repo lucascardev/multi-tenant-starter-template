@@ -376,7 +376,7 @@ export default function IntegrationsPage() {
         {/* Card Google */}
         <Card className="w-full">
           <CardHeader>
-            <CardTitle className="text-2xl flex items-center">
+            <CardTitle className="text-2xl flex">
               <Image src="/google-icon.png" alt="Google" width={28} height={28} className="mr-3" />
               Integração com Google
             </CardTitle>
@@ -443,7 +443,7 @@ export default function IntegrationsPage() {
                         <fieldset className="pt-3 space-y-3">
                         <legend className="text-md font-semibold mb-1 text-foreground">Funcionalidades</legend>
                         <div className="pl-4 border-l-2 border-border dark:border-neutral-700 py-2 space-y-3">
-                            <Label className="font-medium text-sm text-muted-foreground flex items-center">
+                            <Label className="font-medium text-sm text-muted-foreground flex">
                                 <Image src="/google-calendar-icon.svg" alt="Google Calendar" width={16} height={16} className="mr-2" />
                                 Google Calendar:
                             </Label>
