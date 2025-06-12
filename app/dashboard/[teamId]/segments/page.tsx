@@ -376,9 +376,9 @@ export default function IntegrationsPage() {
         {/* Card Google */}
         <Card className="w-full">
           <CardHeader>
-            <CardTitle className="text-2xl flex">
+            <CardTitle className="text-2xl flex flex-row">
               <Image src="/google-icon.png" alt="Google" width={28} height={28} className="mr-3" />
-              Integração com Google
+              <p className="text-md">Integração com Google</p>
             </CardTitle>
             <CardDescription>
               Sincronize agenda e contatos com sua conta Google.
@@ -443,9 +443,10 @@ export default function IntegrationsPage() {
                         <fieldset className="pt-3 space-y-3">
                         <legend className="text-md font-semibold mb-1 text-foreground">Funcionalidades</legend>
                         <div className="pl-4 border-l-2 border-border dark:border-neutral-700 py-2 space-y-3">
-                            <Label className="font-medium text-sm text-muted-foreground flex">
+                            <Label className="font-medium text-sm text-muted-foreground flex flex-row">
                                 <Image src="/google-calendar-icon.svg" alt="Google Calendar" width={16} height={16} className="mr-2" />
-                                Google Calendar:
+                              <p className="text-md">Google Calendar:</p>
+                                
                             </Label>
                             <div className="flex items-center space-x-3">
                                 <Switch id="syncAppointmentsToCalendar" checked={googleConfig.syncAppointmentsToCalendar} onCheckedChange={(c) => handleGoogleSwitchChange(c, "syncAppointmentsToCalendar")} disabled={!googleConfig.selectedCalendarId}/>
