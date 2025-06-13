@@ -567,7 +567,7 @@ export default function AiConfigurationPage() {
 											/>
 											<p className='text-xs text-muted-foreground mt-1'>
 												Seu plano permite um nome
-												customizado. Deixe "Clara" para
+												customizado. Deixe &ldquo;Clara&ldquo; para
 												um possível desconto.
 											</p>
 										</div>
