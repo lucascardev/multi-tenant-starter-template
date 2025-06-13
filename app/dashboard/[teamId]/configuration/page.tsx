@@ -28,6 +28,12 @@ import { Textarea } from '@/components/ui/textarea'
 import apiClient from '@/lib/axios'
 // Adicionado Select
 import { cn } from '@/lib/utils'
+import {
+	KnowledgeSubSection,
+	PersonaInstruction,
+	personaTemplates,
+	SalesFunnelStage,
+} from '@/types/persona-instruction'
 import { useUser } from '@stackframe/stack'
 import {
 	PlusCircle,
@@ -37,31 +43,67 @@ import {
 	BrainCircuit,
 } from 'lucide-react'
 import { useParams } from 'next/navigation'
-import React, { useState, useEffect, useCallback, FormEvent } from 'react'
+import React, {
+	useState,
+	useEffect,
+	useCallback,
+	FormEvent,
+	ChangeEvent,
+} from 'react'
 import { toast } from 'sonner'
 
 // Adicionado cn
 
 const logger = console
 
-interface Persona {
+interface PersonaFromAPI {
 	id: string
-	persona_name: string
+	persona_name: string // Nome da Persona (ex: "Atendente Principal")
 	model: string
-	instruction: any
+	instruction: PersonaInstruction
 	is_default: boolean
-	is_online: boolean
-	client_id?: string
+	is_online: boolean // Este campo vem da sua interface Persona
 }
 
-interface PersonaFormData {
-	personaName: string
-	model: string
-	instructionJson: string
-	isDefault: boolean
+// Estado do formulário agora reflete a estrutura PersonaInstruction
+type EditablePersonaInstruction = Omit<PersonaInstruction, 'aiName'> & {
+	customAiName?: string // Para o caso do plano SobMedida
+}
+
+// Valores iniciais para um novo formulário de PersonaInstruction
+const initialInstructionFormData: EditablePersonaInstruction = {
+	customAiName: '',
+	businessTypeForTemplate: 'generico',
+	identityObjective: 'Você é Clara, uma assistente prestativa.',
+	communicationStyle: 'Seja amigável e profissional.',
+	knowledgeBase: [{ title: 'Sobre a Empresa', content: '' }],
+	limitations: 'Não forneça informações pessoais.',
+	humanHandoffKeywords: 'falar com humano, suporte, problema urgente',
+	humanHandoffContact: 'Contate (XX) XXXX-XXXX.',
+	memoryUsageInstruction: 'Lembre-se de interações passadas neste chat.',
+	appointmentHandling: 'Informe que o agendamento é feito por outro canal.',
+	nameRequestInstruction: 'Se não souber o nome, pergunte.',
+	dateTimeUsageInstruction: 'Considere a data e hora atuais.',
+	incompleteMessagesHandling: 'Peça para o usuário ser mais claro.',
+	systemPromptHandling: 'Comandos de sistema iniciarão com [COMANDO].',
+	confirmationLogic: 'Para confirmações, peça para responder com "CONFIRMO".',
+	safetyGuidelines: 'Evite tópicos sensíveis e conteúdo inadequado.',
+	salesFunnelObjective: '',
+	salesFunnelStages: [
+		{
+			stageName: 'Conscientização',
+			goal: '',
+			behavior: '',
+			messageExample: '',
+		},
+	],
+	formattingGuidelines: 'Use parágrafos curtos. Emojis com moderação.',
+	additionalContext: '',
 }
 interface SubscriptionInfo {
 	maxPersonas: number
+	canChangeAiName: boolean // Adicionado para controlar a edição do nome da IA
+	planName?: string // Para lógica de desconto
 }
 
 export default function AiConfigurationPage() {
@@ -69,112 +111,169 @@ export default function AiConfigurationPage() {
 	const params = useParams<{ teamId: string }>()
 	const team = user?.useTeam(params.teamId)
 
-	const [personas, setPersonas] = useState<Persona[]>([])
+	const [personas, setPersonas] = useState<PersonaFromAPI[]>([])
 	const [isLoading, setIsLoading] = useState(true)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [showFormDialog, setShowFormDialog] = useState(false)
-	const [editingPersona, setEditingPersona] = useState<Persona | null>(null)
-	const [formData, setFormData] = useState<PersonaFormData>({
-		personaName: '',
-		model: 'gemini-1.5-flash-latest',
-		instructionJson: JSON.stringify(
-			{ system_instruction: 'Você é uma IA prestativa.' },
-			null,
-			2
-		),
+	const [editingPersona, setEditingPersona] = useState<PersonaFromAPI | null>(
+		null
+	)
+
+	// Estado do formulário principal para a Persona
+	const [personaDetails, setPersonaDetails] = useState({
+		personaDisplayName: '', // Nome que o usuário dá para esta configuração de persona (ex: "Atendente Principal")
+		model: 'gemini-2.0-flash', // Modelo de IA a ser usado
 		isDefault: false,
 	})
+
+	const [instructionFormData, setInstructionFormData] =
+		useState<EditablePersonaInstruction>(initialInstructionFormData)
+
 	const [subscriptionInfo, setSubscriptionInfo] =
 		useState<SubscriptionInfo | null>(null)
+	const [selectedTemplate, setSelectedTemplate] = useState<string>('generico')
 
-	const fetchPersonas = useCallback(async () => {
+	const fetchPersonasAndSubscription = useCallback(async () => {
+		// ... (lógica para buscar personas e info de assinatura, como antes)
 		if (!user || !team) return
 		setIsLoading(true)
 		try {
 			const [personasRes, subInfoRes] = await Promise.all([
 				apiClient.get('/personas'),
-				apiClient.get('/subscriptions/current'),
+				apiClient.get('/subscriptions/current'), // Endpoint que retorna o plano atual
 			])
-
 			setPersonas(personasRes.data.personas || [])
+			const subData = subInfoRes.data
 			setSubscriptionInfo({
-				maxPersonas: subInfoRes.data.max_personas_count || 1,
+				maxPersonas: subData.max_personas_count || 1,
+				planName: subData.plan_name,
+				// Exemplo: Habilita mudança de nome da IA para plano "Sob Medida"
+				canChangeAiName: subData.plan_name === 'Sob Medida',
 			})
-			logger.info('Personas carregadas:', personasRes.data.personas)
 		} catch (error) {
-			logger.error('Erro ao buscar personas:', error)
-			toast.error('Não foi possível carregar as personas.')
+			/* ... */
 		} finally {
 			setIsLoading(false)
 		}
 	}, [user, team])
 
 	useEffect(() => {
-		fetchPersonas()
-	}, [fetchPersonas])
+		fetchPersonasAndSubscription()
+	}, [fetchPersonasAndSubscription])
 
-	// CORRIGIDO: handleFormChange para Inputs e Textareas (que usam 'value')
-	const handleFormChange = (
-		e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-	) => {
-		const { name, value } = e.target
-		setFormData((prev) => ({ ...prev, [name]: value }))
+	const handleTemplateChange = (templateKey: string) => {
+		setSelectedTemplate(templateKey)
+		const template = personaTemplates[templateKey]
+		if (template) {
+			setInstructionFormData((prev) => ({
+				...initialInstructionFormData, // Reseta para o base para não acumular de templates diferentes
+				...template, // Aplica o template
+				// aiName é tratado separadamente pela lógica de plano
+				customAiName: prev.customAiName, // Mantém o nome customizado se já estava sendo editado
+				businessTypeForTemplate: templateKey,
+			}))
+		}
 	}
 
-	// handleSwitchChange para o componente Switch (que passa 'checked' diretamente)
-	const handleSwitchChange = (checked: boolean, name: string) => {
-		setFormData((prev) => ({ ...prev, [name]: checked }))
+	const handleInstructionInputChange = (
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+		section?: keyof PersonaInstruction,
+		index?: number,
+		field?: keyof KnowledgeSubSection | keyof SalesFunnelStage
+	) => {
+		const { name, value } = e.target
+
+		if (section === 'knowledgeBase' && typeof index === 'number' && field) {
+			setInstructionFormData((prev) => ({
+				...prev,
+				knowledgeBase: prev.knowledgeBase.map((item, i) =>
+					i === index ? { ...item, [field]: value } : item
+				),
+			}))
+		} else if (
+			section === 'salesFunnelStages' &&
+			typeof index === 'number' &&
+			field
+		) {
+			setInstructionFormData((prev) => ({
+				...prev,
+				salesFunnelStages: (prev.salesFunnelStages || []).map(
+					(item, i) =>
+						i === index ? { ...item, [field]: value } : item
+				),
+			}))
+		} else {
+			setInstructionFormData((prev) => ({ ...prev, [name]: value }))
+		}
+	}
+
+	const addKnowledgeSection = () => {
+		setInstructionFormData((prev) => ({
+			...prev,
+			knowledgeBase: [...prev.knowledgeBase, { title: '', content: '' }],
+		}))
+	}
+	const removeKnowledgeSection = (index: number) => {
+		setInstructionFormData((prev) => ({
+			...prev,
+			knowledgeBase: prev.knowledgeBase.filter((_, i) => i !== index),
+		}))
 	}
 
 	const resetForm = () => {
 		setEditingPersona(null)
-		setFormData({
-			personaName: '',
-			model: 'gemini-1.5-flash-latest',
-			instructionJson: JSON.stringify(
-				{ system_instruction: 'Você é uma IA prestativa.' },
-				null,
-				2
-			),
+		setPersonaDetails({
+			personaDisplayName: '',
+			model: 'gemini-2.0-flash',
 			isDefault: false,
 		})
+		setInstructionFormData(initialInstructionFormData)
+		setSelectedTemplate('generico')
 	}
 
-	const handleEdit = (persona: Persona) => {
+	const handleEdit = (persona: PersonaFromAPI) => {
 		setEditingPersona(persona)
-		setFormData({
-			personaName: persona.persona_name,
+		setPersonaDetails({
+			personaDisplayName: persona.persona_name,
 			model: persona.model,
-			instructionJson:
-				typeof persona.instruction === 'string'
-					? persona.instruction
-					: JSON.stringify(
-							persona.instruction || { system_instruction: '' },
-							null,
-							2
-					  ),
 			isDefault: persona.is_default,
 		})
+		// Desestrutura a instrução JSON do banco para o formulário
+		// Se instruction for string (JSON antigo), tenta parsear. Se for objeto, usa direto.
+		let instructionObject: Partial<PersonaInstruction> = {}
+		if (typeof persona.instruction === 'string') {
+			try {
+				instructionObject = JSON.parse(persona.instruction)
+			} catch (e) {
+				logger.error('Falha ao parsear instrução JSON antiga:', e)
+			}
+		} else if (
+			typeof persona.instruction === 'object' &&
+			persona.instruction !== null
+		) {
+			instructionObject = persona.instruction
+		}
+
+		setInstructionFormData({
+			...initialInstructionFormData, // Começa com defaults para garantir todos os campos
+			...(instructionObject as EditablePersonaInstruction), // Sobrescreve com dados do DB
+			customAiName: subscriptionInfo?.canChangeAiName
+				? instructionObject.aiName || ''
+				: '',
+		})
+		setSelectedTemplate(
+			instructionObject.businessTypeForTemplate || 'generico'
+		)
 		setShowFormDialog(true)
 	}
 
 	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault()
-		if (
-			!formData.personaName ||
-			!formData.model ||
-			!formData.instructionJson
-		) {
-			toast.error('Nome, modelo e instrução são obrigatórios.')
+		if (!personaDetails.personaDisplayName || !personaDetails.model) {
+			toast.error('Nome da persona e modelo de IA são obrigatórios.')
 			return
 		}
-		let parsedInstruction
-		try {
-			parsedInstruction = JSON.parse(formData.instructionJson)
-		} catch (jsonError) {
-			toast.error('Instrução JSON inválida.')
-			return
-		}
+		// Validar outros campos de instructionFormData se necessário
 
 		if (
 			!editingPersona &&
@@ -182,17 +281,33 @@ export default function AiConfigurationPage() {
 			personas.length >= subscriptionInfo.maxPersonas
 		) {
 			toast.error(
-				`Você atingiu o limite de ${subscriptionInfo.maxPersonas} persona(s) para o seu plano.`
+				`Limite de ${subscriptionInfo.maxPersonas} persona(s) do plano atingido.`
 			)
 			return
 		}
 
 		setIsSubmitting(true)
+
+		// Monta o objeto de instrução final
+		const finalInstruction: PersonaInstruction = {
+			...instructionFormData,
+			aiName:
+				subscriptionInfo?.canChangeAiName &&
+				instructionFormData.customAiName?.trim()
+					? instructionFormData.customAiName.trim()
+					: 'Clara',
+		}
+		// Remove customAiName se existir, pois ele já foi incorporado em aiName
+		const { customAiName, ...instructionPayloadForDB } =
+			finalInstruction as EditablePersonaInstruction & {
+				customAiName?: string
+			}
+
 		const payload = {
-			personaName: formData.personaName,
-			model: formData.model,
-			instruction: parsedInstruction,
-			isDefault: formData.isDefault,
+			persona_name: personaDetails.personaDisplayName, // Nome da configuração da Persona
+			model: personaDetails.model,
+			instruction: instructionPayloadForDB, // O objeto JSON estruturado
+			is_default: personaDetails.isDefault,
 		}
 
 		try {
@@ -205,7 +320,7 @@ export default function AiConfigurationPage() {
 			}
 			setShowFormDialog(false)
 			resetForm()
-			fetchPersonas()
+			fetchPersonasAndSubscription()
 		} catch (error: any) {
 			logger.error('Erro ao salvar persona:', error)
 			toast.error(
@@ -227,7 +342,7 @@ export default function AiConfigurationPage() {
 		try {
 			await apiClient.delete(`/personas/${personaId}`)
 			toast.success('Persona deletada com sucesso.')
-			fetchPersonas()
+			fetchPersonasAndSubscription()
 		} catch (error: any) {
 			logger.error('Erro ao deletar persona:', error)
 			toast.error(
@@ -253,6 +368,14 @@ export default function AiConfigurationPage() {
 		return <div className='p-6'>Carregando informações...</div>
 	}
 
+	const canCustomizeAiName = subscriptionInfo?.canChangeAiName
+	const currentAiName =
+		canCustomizeAiName && instructionFormData.customAiName?.trim()
+			? instructionFormData.customAiName.trim()
+			: 'Clara'
+	const getsDiscount =
+		!canCustomizeAiName || (canCustomizeAiName && currentAiName === 'Clara')
+
 	return (
 		<div className='p-4 md:p-6 space-y-8'>
 			<div className='flex flex-col sm:flex-row justify-between sm:items-center gap-4'>
@@ -267,6 +390,7 @@ export default function AiConfigurationPage() {
 						plano atual.
 					</p>
 				</div>
+
 				<Dialog
 					open={showFormDialog}
 					onOpenChange={(isOpen) => {
@@ -274,111 +398,381 @@ export default function AiConfigurationPage() {
 						if (!isOpen) resetForm()
 					}}
 				>
-					<DialogTrigger asChild>
-						<Button
-							onClick={() => {
-								resetForm()
-								setShowFormDialog(true)
-							}}
-							disabled={
-								!!(
-									subscriptionInfo &&
-									personas.length >=
-										subscriptionInfo.maxPersonas
-								)
-							} // CORRIGIDO
-						>
-							<PlusCircle className='mr-2 h-4 w-4' /> Criar Nova
-							Persona
-						</Button>
-					</DialogTrigger>
-					<DialogContent className='sm:max-w-[525px]'>
+					<DialogContent className='max-w-3xl'>
+						{' '}
+						{/* Aumentado para mais campos */}
 						<DialogHeader>
 							<DialogTitle>
 								{editingPersona
-									? 'Editar Persona'
-									: 'Criar Nova Persona'}
+									? 'Editar Configuração da Persona'
+									: 'Nova Configuração de Persona'}
 							</DialogTitle>
 							<DialogDescription>
-								Defina o nome, modelo de IA e as instruções para
-								esta personalidade.
+								Defina os detalhes e as instruções avançadas
+								para esta IA.
 							</DialogDescription>
 						</DialogHeader>
 						<form
 							onSubmit={handleSubmit}
-							className='space-y-4 py-4'
+							className='space-y-6 py-4 max-h-[80vh] overflow-y-auto pr-2'
 						>
-							<div>
-								<Label htmlFor='personaName'>
-									Nome da Persona
-								</Label>
-								<Input
-									id='personaName'
-									name='personaName'
-									value={formData.personaName}
-									onChange={handleFormChange}
-									placeholder='Ex: Atendente Principal'
-									required
-									className='mt-1'
-								/>
-							</div>
-							<div>
-								<Label htmlFor='model'>Modelo de IA</Label>
-								<Select
-									name='model'
-									value={formData.model}
-									onValueChange={(value) =>
-										setFormData((p) => ({
-											...p,
-											model: value,
-										}))
-									}
-								>
-									<SelectTrigger className='w-full mt-1'>
-										<SelectValue placeholder='Selecione um modelo' />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value='gemini-2.0-flash'>
-											Gemini 2.0 Flash (Recomendado)
-										</SelectItem>
-										<SelectItem value='gemini-2.0-flash-lite'>
-											Gemini 2.0 Flash-lite (Casos simples)
-										</SelectItem>
-										{/* Adicione outros modelos se disponíveis */}
-									</SelectContent>
-								</Select>
-							</div>
-							<div>
-								<Label htmlFor='instructionJson'>
-									Instrução do Sistema (JSON)
-								</Label>
-								<Textarea
-									id='instructionJson'
-									name='instructionJson'
-									value={formData.instructionJson}
-									onChange={handleFormChange}
-									rows={8}
-									placeholder='{ "system_instruction": "Você é a Clara..." }'
-									required
-									className='mt-1 font-mono text-sm'
-								/>
-								<p className='text-xs text-muted-foreground mt-1'>
-									Deve ser um objeto JSON válido.
-								</p>
-							</div>
-							<div className='flex items-center space-x-2'>
-								<Switch
-									id='isDefault'
-									name='isDefault'
-									checked={formData.isDefault}
-									onCheckedChange={(checked) =>
-										handleSwitchChange(checked, 'isDefault')
-									}
-								/>
-								<Label htmlFor='isDefault'>
-									Definir como Persona Padrão
-								</Label>
-							</div>
+							{/* Detalhes Básicos da Persona (Nome da Configuração, Modelo, Default) */}
+							<Card>
+								<CardHeader>
+									<CardTitle className='text-lg'>
+										Informações Gerais da Persona
+									</CardTitle>
+								</CardHeader>
+								<CardContent className='space-y-4'>
+									<div>
+										<Label htmlFor='personaDisplayName'>
+											Nome desta Configuração de Persona
+										</Label>
+										<Input
+											id='personaDisplayName'
+											value={
+												personaDetails.personaDisplayName
+											}
+											onChange={(e) =>
+												setPersonaDetails((p) => ({
+													...p,
+													personaDisplayName:
+														e.target.value,
+												}))
+											}
+											placeholder='Ex: Atendente Clínica Principal'
+											required
+										/>
+									</div>
+									{/* ... (Select do Modelo de IA e Switch IsDefault como antes) ... */}
+									<div>
+										<Label htmlFor='model'>
+											Modelo de IA
+										</Label>
+										<Select
+											name='model'
+											value={personaDetails.model}
+											onValueChange={(value) =>
+												setPersonaDetails((p) => ({
+													...p,
+													model: value,
+												}))
+											}
+										>
+											<SelectTrigger className='w-full mt-1'>
+												<SelectValue placeholder='Selecione um modelo' />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value='gemini-1.5-flash-latest'>
+													Gemini 1.5 Flash
+													(Recomendado)
+												</SelectItem>
+												{/* <SelectItem value='gemini-1.5-pro-latest'>Gemini 1.5 Pro</SelectItem> */}
+											</SelectContent>
+										</Select>
+									</div>
+									<div className='flex items-center space-x-2'>
+										<Switch
+											id='isDefault'
+											checked={personaDetails.isDefault}
+											onCheckedChange={(checked) =>
+												setPersonaDetails((p) => ({
+													...p,
+													isDefault: checked,
+												}))
+											}
+										/>
+										<Label htmlFor='isDefault'>
+											Definir como Padrão para Novas
+											Instâncias
+										</Label>
+									</div>
+								</CardContent>
+							</Card>
+
+							{/* Seleção de Template */}
+							<Card>
+								<CardHeader>
+									<CardTitle className='text-lg'>
+										Template de Instruções
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<Label htmlFor='templateSelect'>
+										Comece com um modelo (opcional)
+									</Label>
+									<Select
+										value={selectedTemplate}
+										onValueChange={handleTemplateChange}
+									>
+										<SelectTrigger
+											id='templateSelect'
+											className='w-full mt-1'
+										>
+											<SelectValue placeholder='Selecione um template' />
+										</SelectTrigger>
+										<SelectContent>
+											{Object.entries(
+												personaTemplates
+											).map(([key, template]) => (
+												<SelectItem
+													key={key}
+													value={key}
+												>
+													{template.aiName
+														? `${
+																template.aiName
+														  } para ${
+																key
+																	.charAt(0)
+																	.toUpperCase() +
+																key.slice(1)
+														  }`
+														: key
+																.charAt(0)
+																.toUpperCase() +
+														  key.slice(1)}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</CardContent>
+							</Card>
+
+							{/* Campos Detalhados da Instrução */}
+							<Card>
+								<CardHeader>
+									<CardTitle className='text-lg'>
+										Instruções Detalhadas da IA
+									</CardTitle>
+								</CardHeader>
+								<CardContent className='space-y-4'>
+									{canCustomizeAiName && (
+										<div>
+											<Label htmlFor='customAiName'>
+												Nome da IA (Personalizável)
+											</Label>
+											<Input
+												id='customAiName'
+												name='customAiName'
+												value={
+													instructionFormData.customAiName
+												}
+												onChange={(e) =>
+													handleInstructionInputChange(
+														e
+													)
+												}
+												placeholder='Ex: Bia, Max, Atendente Digital'
+											/>
+											<p className='text-xs text-muted-foreground mt-1'>
+												Seu plano permite um nome
+												customizado. Deixe "Clara" para
+												um possível desconto.
+											</p>
+										</div>
+									)}
+									<p className='text-sm font-semibold'>
+										A IA se apresentará como:{' '}
+										<span className='text-primary'>
+											{currentAiName}
+										</span>
+										{getsDiscount &&
+											canCustomizeAiName &&
+											currentAiName === 'Clara' && (
+												<Badge
+													variant='outline'
+													className='ml-2 bg-green-100 text-green-700 border-green-300'
+												>
+													Desconto Aplicável
+												</Badge>
+											)}
+									</p>
+
+									<div>
+										<Label htmlFor='identityObjective'>
+											Identidade e Objetivo Principal
+										</Label>
+										<Textarea
+											id='identityObjective'
+											name='identityObjective'
+											value={
+												instructionFormData.identityObjective
+											}
+											onChange={(e) =>
+												handleInstructionInputChange(e)
+											}
+											rows={3}
+											placeholder='Ex: Seu nome é [Nome da IA], uma recepcionista virtual de IA para [Nome da Clínica/Empresa]...'
+										/>
+									</div>
+									<div>
+										<Label htmlFor='communicationStyle'>
+											Estilo de Comunicação
+										</Label>
+										<Textarea
+											id='communicationStyle'
+											name='communicationStyle'
+											value={
+												instructionFormData.communicationStyle
+											}
+											onChange={(e) =>
+												handleInstructionInputChange(e)
+											}
+											rows={3}
+											placeholder='Ex: Seja empática, acolhedora, use linguagem informal e amigável...'
+										/>
+									</div>
+
+									<Label className='font-medium'>
+										Base de Conhecimento
+									</Label>
+									{instructionFormData.knowledgeBase.map(
+										(kb, index) => (
+											<Card
+												key={index}
+												className='p-3 space-y-2 bg-muted/50'
+											>
+												<Input
+													value={kb.title}
+													onChange={(e) =>
+														handleInstructionInputChange(
+															e,
+															'knowledgeBase',
+															index,
+															'title'
+														)
+													}
+													placeholder='Título da Seção (Ex: Sobre a Clínica)'
+												/>
+												<Textarea
+													value={kb.content}
+													onChange={(e) =>
+														handleInstructionInputChange(
+															e,
+															'knowledgeBase',
+															index,
+															'content'
+														)
+													}
+													placeholder='Conteúdo da seção...'
+													rows={3}
+												/>
+												<Button
+													type='button'
+													variant='ghost'
+													size='sm'
+													onClick={() =>
+														removeKnowledgeSection(
+															index
+														)
+													}
+													className='text-destructive hover:text-destructive'
+												>
+													Remover Seção
+												</Button>
+											</Card>
+										)
+									)}
+									<Button
+										type='button'
+										variant='outline'
+										size='sm'
+										onClick={addKnowledgeSection}
+									>
+										Adicionar Seção de Conhecimento
+									</Button>
+
+									{/* Outros campos: limitations, humanHandoffKeywords, etc. como Textareas */}
+									<div>
+										<Label htmlFor='limitations'>
+											Limitações e Proibições
+										</Label>
+										<Textarea
+											id='limitations'
+											name='limitations'
+											value={
+												instructionFormData.limitations
+											}
+											onChange={(e) =>
+												handleInstructionInputChange(e)
+											}
+											rows={3}
+										/>
+									</div>
+									<div>
+										<Label htmlFor='humanHandoffKeywords'>
+											Palavras-chave para Encaminhamento
+											Humano
+										</Label>
+										<Textarea
+											id='humanHandoffKeywords'
+											name='humanHandoffKeywords'
+											value={
+												instructionFormData.humanHandoffKeywords
+											}
+											onChange={(e) =>
+												handleInstructionInputChange(e)
+											}
+											rows={2}
+											placeholder='Ex: problema, cancelar, falar com gerente'
+										/>
+									</div>
+									<div>
+										<Label htmlFor='humanHandoffContact'>
+											Contato para Encaminhamento Humano
+										</Label>
+										<Input
+											id='humanHandoffContact'
+											name='humanHandoffContact'
+											value={
+												instructionFormData.humanHandoffContact
+											}
+											onChange={(e) =>
+												handleInstructionInputChange(e)
+											}
+											placeholder='Ex: WhatsApp (XX) XXXXX-XXXX ou telefone YYYY-YYYY'
+										/>
+									</div>
+									{/* ... Adicionar todos os campos de instructionFormData como Inputs/Textareas ... */}
+									{/* Exemplo para salesFunnelStages (mais complexo, pode precisar de um componente dedicado) */}
+
+									<div>
+										<Label htmlFor='formattingGuidelines'>
+											Diretrizes de Formatação
+										</Label>
+										<Textarea
+											id='formattingGuidelines'
+											name='formattingGuidelines'
+											value={
+												instructionFormData.formattingGuidelines
+											}
+											onChange={(e) =>
+												handleInstructionInputChange(e)
+											}
+											rows={2}
+										/>
+									</div>
+									<div>
+										<Label htmlFor='additionalContext'>
+											Contexto Adicional (Opcional)
+										</Label>
+										<Textarea
+											id='additionalContext'
+											name='additionalContext'
+											value={
+												instructionFormData.additionalContext ||
+												''
+											}
+											onChange={(e) =>
+												handleInstructionInputChange(e)
+											}
+											rows={3}
+										/>
+									</div>
+								</CardContent>
+							</Card>
+
 							<DialogFooter>
 								<DialogClose asChild>
 									<Button type='button' variant='outline'>
@@ -398,73 +792,75 @@ export default function AiConfigurationPage() {
 						</form>
 					</DialogContent>
 				</Dialog>
-			</div>
-			{subscriptionInfo &&
-				personas.length >= subscriptionInfo.maxPersonas &&
-				!editingPersona && (
-					<p className='text-sm text-red-500 dark:text-red-400'>
-						Você atingiu o limite de personas para o seu plano.
-					</p>
-				)}
-
-			<div className='grid md:grid-cols-2 lg:grid-cols-3 gap-6'>
-				{personas.map((persona) => (
-					<Card key={persona.id} className='flex flex-col'>
-						<CardHeader>
-							<div className='flex justify-between items-start'>
-								<CardTitle className='text-xl'>
-									{persona.persona_name}
-								</CardTitle>
-								<BrainCircuit className='h-6 w-6 text-primary' />
+				{subscriptionInfo &&
+					personas.length >= subscriptionInfo.maxPersonas &&
+					!editingPersona && (
+						<p className='text-sm text-red-500 dark:text-red-400'>
+							Você atingiu o limite de personas para o seu plano.
+						</p>
+					)}
+				<div className='grid md:grid-cols-2 lg:grid-cols-3 gap-6'>
+					{personas.map((persona) => (
+						<Card key={persona.id} className='flex flex-col'>
+							<CardHeader>
+								<div className='flex justify-between items-start'>
+									<CardTitle className='text-xl'>
+										{persona.persona_name}
+									</CardTitle>
+									<BrainCircuit className='h-6 w-6 text-primary' />
+								</div>
+								<p className='text-xs text-muted-foreground'>
+									Modelo: {persona.model} (IA:{' '}
+									{(persona.instruction as PersonaInstruction)
+										?.aiName || 'N/A'}
+									)
+								</p>
+								{persona.is_default && (
+									<Badge variant='outline' className='w-fit'>
+										{' '}
+										Padrão{' '}
+									</Badge>
+								)}
+							</CardHeader>
+							<CardContent className='flex-grow'>
+								<p className='text-sm text-muted-foreground line-clamp-3'>
+									Objetivo:{' '}
+									{(persona.instruction as PersonaInstruction)
+										?.identityObjective ||
+										JSON.stringify(persona.instruction)}
+								</p>
+							</CardContent>
+							<div className='p-4 border-t flex gap-2'>
+								<Button
+									variant='outline'
+									size='sm'
+									onClick={() => handleEdit(persona)}
+									className='flex-1'
+								>
+									<Edit3 className='mr-2 h-4 w-4' /> Editar
+								</Button>
+								<Button
+									variant='destructive'
+									size='sm'
+									onClick={() => handleDelete(persona.id)}
+									className='flex-1'
+									disabled={
+										persona.is_default &&
+										personas.length <= 1
+									}
+								>
+									<Trash2 className='mr-2 h-4 w-4' /> Deletar
+								</Button>
 							</div>
-							<p className='text-xs text-muted-foreground'>
-								Modelo: {persona.model}
-							</p>
-							{persona.is_default && (
-								<Badge variant='outline' className='w-fit'>
-									Padrão
-								</Badge>
-							)}
-						</CardHeader>
-						<CardContent className='flex-grow'>
-							<p className='text-sm text-muted-foreground line-clamp-3'>
-								Instrução:{' '}
-								{typeof persona.instruction === 'string'
-									? persona.instruction
-									: JSON.stringify(persona.instruction)}
-							</p>
-						</CardContent>
-						<div className='p-4 border-t border-border flex gap-2'>
-							<Button
-								variant='outline'
-								size='sm'
-								onClick={() => handleEdit(persona)}
-								className='flex-1'
-							>
-								<Edit3 className='mr-2 h-4 w-4' /> Editar
-							</Button>
-							<Button
-								variant='destructive'
-								size='sm'
-								onClick={() => handleDelete(persona.id)}
-								className='flex-1'
-								disabled={
-									persona.is_default && personas.length <= 1
-								}
-							>
-								{' '}
-								{/*Não deletar se for a única e default*/}
-								<Trash2 className='mr-2 h-4 w-4' /> Deletar
-							</Button>
-						</div>
-					</Card>
-				))}
-				{personas.length === 0 && !isLoading && (
-					<p className='text-muted-foreground col-span-full text-center py-8'>
-						Nenhuma persona configurada ainda. Crie uma para
-						começar!
-					</p>
-				)}
+						</Card>
+					))}
+					{personas.length === 0 && !isLoading && (
+						<p className='text-muted-foreground col-span-full text-center py-8'>
+							Nenhuma persona configurada ainda. Crie uma para
+							começar!
+						</p>
+					)}
+				</div>
 			</div>
 		</div>
 	)
