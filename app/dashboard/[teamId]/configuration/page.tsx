@@ -463,11 +463,11 @@ export default function AiConfigurationPage() {
 												<SelectValue placeholder='Selecione um modelo' />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value='gemini-1.5-flash-latest'>
-													Gemini 1.5 Flash
+												<SelectItem value='gemini-2.0-flash'>
+													Gemini 2.0 Flash
 													(Recomendado)
 												</SelectItem>
-												{/* <SelectItem value='gemini-1.5-pro-latest'>Gemini 1.5 Pro</SelectItem> */}
+												{/* <SelectItem value='gemini-1.5-pro-latest'>Gemini 2.0 Pro</SelectItem> */}
 											</SelectContent>
 										</Select>
 									</div>
