@@ -67,21 +67,22 @@ export default function TeamDashboardPage() { // Renomeado para clareza
     try {
       // As chamadas de API usarão o token de autenticação do usuário (via interceptor do Axios)
       // O backend identificará o cliente com base nesse token.
-      const [instancesRes, personasRes, subInfoRes /*, messagesRes */] = await Promise.all([
+      const [instancesRes, personasRes, subInfoRes, clientConfigRes] = await Promise.all([
         apiClient.get('/instances'),
         apiClient.get('/personas'),
         apiClient.get('/subscriptions/current'),
-        // apiClient.get('/stats/messages?period=30d') // Endpoint de exemplo
+        apiClient.get('/client/config'),
       ]);
 
       const instancesData = instancesRes.data.instances || [];
       const personasData = personasRes.data.personas || [];
       const subData = subInfoRes.data; // API deve retornar um objeto, mesmo que com defaults
+      const clientConfigData = clientConfigRes.data;
 
       setStats({
         activeInstances: instancesData.filter((inst: any) => inst.status === 'connected').length,
         totalPersonas: personasData.length,
-        messagesSentLast30Days: 0, // TODO: Implementar API para esta métrica
+        messagesSentLast30Days: clientConfigData.messages_sent ?? 0,
         activeSubscriptionPlan: subData?.plan_name || "Plano não identificado",
         clientBusinessName: team.displayName, // Usar o displayName do time do Stack Auth
       });
@@ -198,8 +199,7 @@ export default function TeamDashboardPage() { // Renomeado para clareza
             <MessageSquareText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {/* <div className="text-2xl font-bold">{stats?.messagesSentLast30Days ?? '-'}</div> */}
-            <div className="text-2xl font-bold">carregando...</div>
+            <div className="text-2xl font-bold">{stats?.messagesSentLast30Days ?? 0}</div>
             <p className="text-xs text-muted-foreground">Interações realizadas</p>
           </CardContent>
         </Card>
