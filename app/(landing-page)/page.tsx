@@ -7,6 +7,9 @@ import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { ComponentIcon, Users } from 'lucide-react'
 import { SocialProofCarousel } from '@/components/social-proof-carousel'
 
+
+export const dynamic = 'force-dynamic';
+
 const MOCK_PLANS: SubscriptionPlan[] = [
   {
     id: "mock_inicial",
