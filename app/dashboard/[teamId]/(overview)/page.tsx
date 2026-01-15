@@ -37,10 +37,35 @@ interface InstanceStatusSummary {
     status: string;
 }
 
+const MOCK_DASHBOARD_DATA = {
+    instances: [
+        {
+            id: 'mock-inst-1',
+            instance_name: 'WhatsApp Principal',
+            status: 'connected',
+        },
+        {
+            id: 'mock-inst-2',
+            instance_name: 'WhatsApp Secundário',
+            status: 'disconnected',
+        }
+    ],
+    personas: [
+        { id: 'mock-persona-1', name: 'Atendente Clara' }
+    ],
+    subscription: {
+        plan_name: 'Plano Básico (Mock)',
+    },
+    clientConfig: {
+        messages_sent: 1250,
+        business_name: 'Clínica Modelo (Dev)'
+    }
+};
+
 export default function TeamDashboardPage() { // Renomeado para clareza
   const user = useUser({ or: "redirect" }); // or:redirect garante que user exista se renderizar
   const params = useParams<{ teamId: string }>();
-  const router = useRouter(); // Para possível redirecionamento manual se necessário
+  // const router = useRouter(); // Para possível redirecionamento manual se necessário
 
   // useTeam pode retornar null se o teamId for inválido ou o usuário não tiver acesso.
   // O Layout.tsx já tem lógica para redirecionar se !team.
@@ -98,8 +123,32 @@ export default function TeamDashboardPage() { // Renomeado para clareza
 
     } catch (err: any) {
       logger.error("Erro ao buscar dados do dashboard:", err.response?.data || err.message);
-      setError(err.response?.data?.message || "Não foi possível carregar os dados do dashboard.");
-      toast.error(err.response?.data?.message || "Falha ao carregar dados do dashboard.");
+      
+      // FALLBACK PARA MOCK DATA EM DESENVOLVIMENTO
+      if (process.env.NODE_ENV === 'development') {
+          logger.warn("Usando MOCK DATA para o dashboard devido a erro na API.");
+          
+          setStats({
+            activeInstances: MOCK_DASHBOARD_DATA.instances.filter((inst: any) => inst.status === 'connected').length,
+            totalPersonas: MOCK_DASHBOARD_DATA.personas.length,
+            messagesSentLast30Days: MOCK_DASHBOARD_DATA.clientConfig.messages_sent,
+            activeSubscriptionPlan: MOCK_DASHBOARD_DATA.subscription.plan_name,
+            clientBusinessName: MOCK_DASHBOARD_DATA.clientConfig.business_name,
+          });
+
+          setInstanceSummary(
+              MOCK_DASHBOARD_DATA.instances.map((inst: any) => ({
+                  id: inst.id,
+                  instance_name: inst.instance_name,
+                  status: inst.status
+              }))
+          );
+          // Não define erro para UI, pois o mock é um sucesso "degradado"
+          toast.warning("Usando dados de demonstração (API offline).");
+      } else {
+          setError(err.response?.data?.message || "Não foi possível carregar os dados do dashboard.");
+          toast.error(err.response?.data?.message || "Falha ao carregar dados do dashboard.");
+      }
     } finally {
       setIsLoading(false);
     }
