@@ -36,7 +36,7 @@ export function Footer(props: {
             >
               GitHub
             </a>
-            .
+            . <span className="text-xs text-muted-foreground/60 ml-2">v{process.env.APP_VERSION}</span>
           </p>
         </div>
 

@@ -1,4 +1,4 @@
-# Next.js Multi-tenant Starter Template
+# Clara Frontend
 
 A minimalistic multi-tenant Next.js starter template with minimal setup and a modular design. Bring your own backend and database.
 

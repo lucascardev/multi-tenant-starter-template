@@ -6,7 +6,7 @@ import { LucideIcon, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -68,6 +68,29 @@ function NavItem(props: {
   );
 }
 
+// NOVO: Componente para o rodapé do dashboard com versões
+// (Definido aqui dentro ou em arquivo separado, mas por simplicidade mantemos aqui para acesso rápido)
+import apiClient from '@/lib/axios';
+
+function DashboardFooter() {
+    const [apiVersion, setApiVersion] = useState<string>('...');
+    const appVersion = process.env.APP_VERSION || 'DEV';
+
+    useEffect(() => {
+        // Tenta buscar a versão da API
+        apiClient.get('/version')
+            .then(res => setApiVersion(res.data.version || 'Unknown'))
+            .catch(() => setApiVersion('Offline'));
+    }, []);
+
+    return (
+        <div className="p-4 border-t text-xs text-muted-foreground text-center">
+            <p>Clara v{appVersion}</p>
+            <p>API v{apiVersion}</p>
+        </div>
+    );
+}
+
 function SidebarContent(props: {
   onNavigate?: () => void;
   items: SidebarItem[];
@@ -109,6 +132,8 @@ function SidebarContent(props: {
 
         <div className="flex-grow" />
       </div>
+      {/* Footer injetado aqui */}
+      <DashboardFooter />
     </div>
   );
 }
