@@ -1,12 +1,15 @@
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { TypewriterTitle } from "./typewriter-title";
 
 export function Hero(props: {
   capsuleText: string;
   capsuleLink: string;
   title: string;
   subtitle: string;
+  subtitlePrefix?: string;
+  typingWords?: string[];
   credits?: React.ReactNode;
   primaryCtaText: string;
   primaryCtaLink: string;
@@ -23,12 +26,18 @@ export function Hero(props: {
         >
           {props.capsuleText}
         </Link>
-        <h1 className="font-heading text-3xl sm:text-5xl lg:text-7xl">
+        <h1 className="font-heading text-3xl sm:text-5xl lg:text-7xl bg-gradient-to-r from-brand-purple to-brand-orange bg-clip-text text-transparent pb-4">
           {props.title}
         </h1>
-        <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
-          {props.subtitle}
-        </p>
+        <div className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
+            {props.typingWords ? (
+                <span>
+                    {props.subtitlePrefix} <TypewriterTitle strings={props.typingWords} />
+                </span>
+            ) : (
+                props.subtitle
+            )}
+        </div>
         <div className="flex gap-4 flex-wrap justify-center">
           <Link
             href={props.primaryCtaLink}

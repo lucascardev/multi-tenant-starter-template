@@ -1,12 +1,101 @@
 import { FeatureGrid } from '@/components/features'
 import { Hero } from '@/components/hero'
-import { PricingGrid } from '@/components/pricing'
+import { PricingSection } from '@/components/pricing-section'
 import { stackServerApp } from '@/stack'
+import { SubscriptionPlan } from '@/types/plan'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { ComponentIcon, Users } from 'lucide-react'
+import { SocialProofCarousel } from '@/components/social-proof-carousel'
+
+const MOCK_PLANS: SubscriptionPlan[] = [
+  {
+    id: "mock_inicial",
+    plan_name: "Inicial",
+    price_monthly: 345,
+    price_yearly: 3450,
+    currency: "BRL",
+    description: "Para uso inicial de pequenas clínicas e consultórios.",
+    features: [
+      "Assistente virtual completa",
+      "Suporte",
+      "Integração com seu sistema de gestão",
+      "300 atendimentos por mês",
+      "Teste grátis de 7 dias."
+    ],
+    max_messages_count: 0,
+    max_customers_count: 300,
+    max_personas_count: 1,
+    max_instances_count: 1,
+    is_active: true,
+    display_order: 1
+  },
+  {
+    id: "mock_basico",
+    plan_name: "Básico",
+    price_monthly: 435,
+    price_yearly: 4350,
+    currency: "BRL",
+    description: "Para uso de clínicas e consultórios em expansão.",
+    features: [
+      "Mesmo que o plano inicial",
+      "600 atendimentos por mês",
+      "IA pode ser nomeada"
+    ],
+    max_messages_count: 0,
+    max_customers_count: 600,
+    max_personas_count: 1,
+    max_instances_count: 1,
+    is_active: true,
+    display_order: 2
+  },
+  {
+    id: "mock_sob_medida",
+    plan_name: "Sob medida",
+    price_monthly: 525,
+    price_yearly: 5250,
+    currency: "BRL",
+    description: "Ideal para empresas com maior uso das nossas ferramentas.",
+    features: [
+      "Mesmo que o plano básico",
+      "900 atendimentos por mês"
+    ],
+    max_messages_count: 0,
+    max_customers_count: 900,
+    max_personas_count: 1,
+    max_instances_count: 1,
+    is_active: true,
+    display_order: 3
+  }
+];
+
+async function fetchPlans(): Promise<SubscriptionPlan[]> {
+  try {
+    const baseUrl = process.env.NODE_ENV === 'production' 
+        ? "https://api.clara-ia.space" 
+        : "http://localhost:3030";
+        
+    const res = await fetch(`${baseUrl}/api/public/plans`, { cache: "no-store", next: { revalidate: 0 } });
+    if (!res.ok) {
+        throw new Error("Failed to fetch plans");
+    }
+    const data = await res.json();
+    return data.plans || [];
+  } catch (error) {
+    console.warn("Error fetching plans, using mock data for development:", error);
+    return MOCK_PLANS;
+  }
+}
 
 export default async function IndexPage() {
-	const project = await stackServerApp.getProject()
+    const plans = await fetchPlans();
+	let project
+	try {
+		project = await stackServerApp.getProject()
+	} catch (e) {
+		console.warn('Failed to fetch Stack project (likely due to invalid keys in .env.local). Using mock for dev.')
+		project = { config: { clientTeamCreationEnabled: true } }
+	}
+
 	if (!project.config.clientTeamCreationEnabled) {
 		return (
 			<div className='w-full min-h-96 flex items-center justify-center'>
@@ -28,33 +117,17 @@ export default async function IndexPage() {
 				capsuleText='Conheça a Clara'
 				capsuleLink='https://www.instagram.com/clara_secretaria/'
 				title='A IA feita para trabalhar com você.'
-				subtitle='Construida para atender as necessidades de sua clínica.'
+				subtitle='Construída para atender as necessidades de sua clínica.'
+                subtitlePrefix='Construída para atender as necessidades de'
+                typingWords={['sua clínica.', 'sua academia.', 'sua loja.', 'seu negócio.', 'seu salão.']}
 				primaryCtaText='Inscreva-se'
 				primaryCtaLink={stackServerApp.urls.signUp}
 				secondaryCtaText='Contate-nos'
 				secondaryCtaLink='https://wa.me/557192931330'
-				credits={
-					<>
-						Crafted with ❤️ by{' '}
-						<a
-							href='https://stack-auth.com'
-							target='_blank'
-							rel='noreferrer'
-							className='underline'
-						>
-							Stack Auth -
-						</a>
-						<a
-							href='https://stack-auth.com'
-							target='_blank'
-							rel='noreferrer'
-							className='underline'
-						>
-							- LightUP
-						</a>
-					</>
-				}
 			/>
+			<div className="bg-muted/30">
+				<SocialProofCarousel />
+			</div>
 
 			<div id='features' />
 			<FeatureGrid
@@ -230,67 +303,7 @@ export default async function IndexPage() {
 			/>
 
 			<div id='pricing' />
-			<PricingGrid
-				title='Preços'
-				subtitle='Flexible plans for every team.'
-				items={[
-					{
-						title: 'Inicial',
-						price: 'R$345.00',
-						description:
-							'Para uso inicial de pequenas clínicas e consultórios.',
-						features: [
-							'Assistente virtual completa',
-							'Suporte',
-							'Integração com seu sistema de gestão',
-							'300 atendimentos por mês',
-							'Teste grátis de 7 dias.',
-						],
-						buttonText: 'Registre-se',
-						buttonHref: stackServerApp.urls.signUp,
-					},
-					{
-						title: 'Básico',
-						price: 'R$435.00',
-						description:
-							'Para uso de clínicas e consultórios em expansão.',
-						features: [
-							'Mesmo que o plano inicial',
-							'600 atendimentos por mês',
-							'IA pode ser nomeada',
-						],
-						buttonText: 'Adquira o plano básico',
-						isPopular: true,
-						buttonHref: stackServerApp.urls.signUp,
-					},
-					{
-						title: 'Sob medida',
-						price: 'R$525.00',
-						description:
-							'Ideal para empresas com maior uso das nossas ferramentas.',
-						features: [
-							'Mesmo que o plano básico',
-							'900 atendimentos por mês',
-						],
-						buttonText: 'Adquira o plano Sob medida',
-						isPopular: false,
-						buttonHref: stackServerApp.urls.signUp,
-					},
-					{
-						title: 'Plano Individualizado',
-						price: 'Variável',
-						description: 'Para grandes organizações.',
-						features: [
-							'Suporte 24 horas',
-							'Atendimentos por mês personalizado',
-							'Soluções personalizadas',
-						],
-						buttonText: 'Contate-nos',
-            isPopular: false,
-						buttonHref: stackServerApp.urls.signUp,
-					},
-				]}
-			/>
+			<PricingSection plans={plans} />
 		</>
 	)
 }
