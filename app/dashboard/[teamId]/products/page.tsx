@@ -328,7 +328,7 @@ export default function MyPlanPage() {
                         <h3 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Configure no WhatsApp Business</h3>
                         <div className="p-4 bg-muted rounded-lg text-sm space-y-2 mt-2">
                              <p>1. Abra o WhatsApp Business e insira o número comprado.</p>
-                             <p>2. Aguarde o contador de SMS zerar e selecione <strong>"Não recebi o código"</strong> -> <strong>"Me Ligue"</strong>.</p>
+                             <p>2. Aguarde o contador de SMS zerar e selecione <strong>&quot;Não recebi o código&quot;</strong> &rarr; <strong>&quot;Me Ligue&quot;</strong>.</p>
                              <p>3. Volte ao painel da BR DID. O código de verificação aparecerá lá em alguns minutos (5-10min).</p>
                              <p>4. Insira o código no WhatsApp e pronto!</p>
                         </div>
