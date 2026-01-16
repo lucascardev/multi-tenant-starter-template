@@ -140,7 +140,7 @@ export default function ClinicorpIntegrationPage() {
         <CardHeader>
           <CardTitle className="text-xl">Credenciais e Automação</CardTitle>
           <CardDescription>
-            A Clara usará este sistema para verificar agenda oficial e buscar dados de pacientes.
+            A Clara usará este sistema para verificar agenda oficial e buscar dados de clientes/pacientes.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -185,7 +185,7 @@ export default function ClinicorpIntegrationPage() {
                   <div className="space-y-4">
                     {[
                         {id: "enableAppointmentConfirmation", label: "Confirmar agendamentos do dia seguinte", desc: "A Clara envia mensagem pedindo confirmação."},
-                        {id: "enableReturnCallMessages", label: "Reativar Pacientes Antigos", desc: "Enviar mensagens para quem não vem há muito tempo."},
+                        {id: "enableReturnCallMessages", label: "Reativar Clientes Antigos", desc: "Enviar mensagens para quem não vem há muito tempo."},
                         {id: "enableBudgetFollowupMessages", label: "Acompanhamento de Orçamentos", desc: "Perguntar sobre orçamentos em aberto."},
                     ].map(feature => (
                         <div key={feature.id} className="flex items-start space-x-3">

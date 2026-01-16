@@ -308,7 +308,7 @@ export default function GoogleIntegrationPage() {
                                      Bloqueio
                                 </div>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                    A Clara <strong>apenas lê</strong> a agenda para evitar marcar pacientes em horários que você tem compromissos pessoais.
+                                    A Clara <strong>apenas lê</strong> a agenda para evitar agendar reuniões em horários que você tem compromissos pessoais.
                                 </p>
                                 <div className="mt-auto pt-3 flex gap-2">
                                     <Badge variant="secondary">Leitura: Sim</Badge>
@@ -324,7 +324,7 @@ export default function GoogleIntegrationPage() {
                                      Sync Total
                                 </div>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                    A Clara <strong>evita conflitos</strong> e também <strong>cria eventos</strong> na sua agenda Google quando marca algo no Clinicorp.
+                                    A Clara <strong>evita conflitos</strong> e também <strong>cria eventos</strong> na sua agenda Google quando marca algo no sistema.
                                 </p>
                                 <div className="mt-auto pt-3 flex gap-2">
                                     <Badge variant="secondary">Leitura: Sim</Badge>
@@ -340,7 +340,7 @@ export default function GoogleIntegrationPage() {
                                      Backup
                                 </div>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                    A Clara <strong>não verifica conflitos</strong>, mas copia todos os agendamentos feitos para este calendário como um backup.
+                                    A Clara <strong>não verifica conflitos</strong>, mas copia todos os agendamentos feitos como um backup.
                                 </p>
                                 <div className="mt-auto pt-3 flex gap-2">
                                     <Badge variant="outline">Leitura: Não</Badge>
@@ -369,7 +369,7 @@ export default function GoogleIntegrationPage() {
                             </div>
                         </div>
                         <Textarea 
-                            placeholder="Ex: Minha agenda é bloqueada todas as segundas de manhã. Não marque pacientes das 12h as 14h..." 
+                            placeholder="Ex: Minha agenda é bloqueada todas as segundas de manhã. Não marque reuniões das 12h as 14h..." 
                             className="min-h-[120px] text-base resize-none"
                             value={googleConfig.schedulerInstruction || ""}
                             onChange={(e) => setGoogleConfig(prev => ({ ...prev, schedulerInstruction: e.target.value }))}
