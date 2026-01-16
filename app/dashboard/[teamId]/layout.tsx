@@ -15,7 +15,7 @@ const navigationItems: SidebarItem[] = [
   { type: 'label', name: 'Gerencimento' },
   { name: "Meu Plano", href: "/products", icon: ShoppingBag, type: "item" },
   { name: "Pessoas meu time", href: "/people", icon: Users, type: "item" },
-  { name: "Integração", href: "/segments", icon: Columns3, type: "item" },
+  { name: "Integração", href: "/integrations", icon: Columns3, type: "item" },
   { name: "WhatsApp", href: "/regions", icon: Locate, type: "item" },
   { type: 'label', name: 'Financeiro' },
   { name: "Faturas", href: "/revenue", icon: BarChart4, type: "item" },
