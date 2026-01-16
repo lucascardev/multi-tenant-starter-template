@@ -41,6 +41,8 @@ import {
 	Trash2,
 	RefreshCw,
 	BrainCircuit,
+    Shield,
+    X
 } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import React, {
@@ -63,6 +65,7 @@ interface PersonaFromAPI {
 	instruction: PersonaInstruction
 	is_default: boolean
 	is_online: boolean // Este campo vem da sua interface Persona
+    owner_phones?: string[] | any // Lista de telefones com acesso de dono
 }
 
 // Estado do formulário agora reflete a estrutura PersonaInstruction
@@ -122,9 +125,12 @@ export default function AiConfigurationPage() {
 	// Estado do formulário principal para a Persona
 	const [personaDetails, setPersonaDetails] = useState({
 		personaDisplayName: '', // Nome que o usuário dá para esta configuração de persona (ex: "Atendente Principal")
-		model: 'gemini-2.0-flash', // Modelo de IA a ser usado
+		// model: 'gemini-2.0-flash', // REMOVIDO: Seleção automática no backend
 		isDefault: false,
+        ownerPhones: [] as string[], // Estado para lista de telefones de donos
 	})
+
+    const [newOwnerPhone, setNewOwnerPhone] = useState('') // Input temporário
 
 	const [instructionFormData, setInstructionFormData] =
 		useState<EditablePersonaInstruction>(initialInstructionFormData)
@@ -220,23 +226,61 @@ export default function AiConfigurationPage() {
 		}))
 	}
 
+    // Handlers para Owner Phones
+    const handleAddOwnerPhone = () => {
+        if (!newOwnerPhone.trim()) return;
+        // Limpeza básica: manter apenas números
+        const cleanPhone = newOwnerPhone.replace(/\D/g, '');
+        if (cleanPhone.length < 10) {
+            toast.error("Número de telefone inválido (muito curto).");
+            return;
+        }
+        if (personaDetails.ownerPhones.includes(cleanPhone)) {
+             toast.error("Este número já está na lista.");
+             return;
+        }
+        setPersonaDetails(prev => ({
+            ...prev,
+            ownerPhones: [...prev.ownerPhones, cleanPhone]
+        }));
+        setNewOwnerPhone('');
+    };
+
+    const handleRemoveOwnerPhone = (phoneToRemove: string) => {
+        setPersonaDetails(prev => ({
+            ...prev,
+            ownerPhones: prev.ownerPhones.filter(p => p !== phoneToRemove)
+        }));
+    };
+
+
 	const resetForm = () => {
 		setEditingPersona(null)
 		setPersonaDetails({
 			personaDisplayName: '',
-			model: 'gemini-2.0-flash',
+			// model: 'gemini-2.0-flash',
 			isDefault: false,
+            ownerPhones: [],
 		})
+        setNewOwnerPhone('');
 		setInstructionFormData(initialInstructionFormData)
 		setSelectedTemplate('generico')
 	}
 
 	const handleEdit = (persona: PersonaFromAPI) => {
 		setEditingPersona(persona)
+        
+        // Process owner_phones which might come as JSON array or string array from API
+        let phones: string[] = [];
+        if (Array.isArray(persona.owner_phones)) {
+            phones = persona.owner_phones.map(String);
+        }
+
 		setPersonaDetails({
 			personaDisplayName: persona.persona_name,
-			model: persona.model,
+			// model: persona.model,
 			isDefault: persona.is_default,
+            ownerPhones: phones,
 		})
 		// Desestrutura a instrução JSON do banco para o formulário
 		// Se instruction for string (JSON antigo), tenta parsear. Se for objeto, usa direto.
@@ -269,11 +313,10 @@ export default function AiConfigurationPage() {
 
 	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault()
-		if (!personaDetails.personaDisplayName || !personaDetails.model) {
-			toast.error('Nome da persona e modelo de IA são obrigatórios.')
+		if (!personaDetails.personaDisplayName) { // Removida checagem de model
+			toast.error('Nome da persona é obrigatório.')
 			return
 		}
-		// Validar outros campos de instructionFormData se necessário
 
 		if (
 			!editingPersona &&
@@ -304,10 +347,11 @@ export default function AiConfigurationPage() {
 			}
 
 		const payload = {
-			persona_name: personaDetails.personaDisplayName, // Nome da configuração da Persona
-			model: personaDetails.model,
-			instruction: instructionPayloadForDB, // O objeto JSON estruturado
+			persona_name: personaDetails.personaDisplayName,
+			model: 'auto', // Backend agora decide ou usa padrão
+			instruction: instructionPayloadForDB, 
 			is_default: personaDetails.isDefault,
+            owner_phones: personaDetails.ownerPhones, // Envia lista de donos
 		}
 
 		try {
@@ -390,478 +434,477 @@ export default function AiConfigurationPage() {
 						plano atual.
 					</p>
 				</div>
+                <div className='flex gap-2'>
+				<Button onClick={() => { resetForm(); setShowFormDialog(true); }}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Nova Persona
+                </Button>
+                </div>
+			</div>
 
-				<Dialog
-					open={showFormDialog}
-					onOpenChange={(isOpen) => {
-						setShowFormDialog(isOpen)
-						if (!isOpen) resetForm()
-					}}
-				>
-					<DialogContent className='max-w-3xl'>
-						{' '}
-						{/* Aumentado para mais campos */}
-						<DialogHeader>
-							<DialogTitle>
-								{editingPersona
-									? 'Editar Configuração da Persona'
-									: 'Nova Configuração de Persona'}
-							</DialogTitle>
-							<DialogDescription>
-								Defina os detalhes e as instruções avançadas
-								para esta IA.
-							</DialogDescription>
-						</DialogHeader>
-						<form
-							onSubmit={handleSubmit}
-							className='space-y-6 py-4 max-h-[80vh] overflow-y-auto pr-2'
-						>
-							{/* Detalhes Básicos da Persona (Nome da Configuração, Modelo, Default) */}
-							<Card>
-								<CardHeader>
-									<CardTitle className='text-lg'>
-										Informações Gerais da Persona
-									</CardTitle>
-								</CardHeader>
-								<CardContent className='space-y-4'>
-									<div>
-										<Label htmlFor='personaDisplayName'>
-											Nome desta Configuração de Persona
-										</Label>
-										<Input
-											id='personaDisplayName'
-											value={
-												personaDetails.personaDisplayName
-											}
-											onChange={(e) =>
-												setPersonaDetails((p) => ({
-													...p,
-													personaDisplayName:
-														e.target.value,
-												}))
-											}
-											placeholder='Ex: Atendente Clínica Principal'
-											required
-										/>
-									</div>
-									{/* ... (Select do Modelo de IA e Switch IsDefault como antes) ... */}
-									<div>
-										<Label htmlFor='model'>
-											Modelo de IA
-										</Label>
-										<Select
-											name='model'
-											value={personaDetails.model}
-											onValueChange={(value) =>
-												setPersonaDetails((p) => ({
-													...p,
-													model: value,
-												}))
-											}
-										>
-											<SelectTrigger className='w-full mt-1'>
-												<SelectValue placeholder='Selecione um modelo' />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value='gemini-2.0-flash'>
-													Gemini 2.0 Flash
-													(Recomendado)
-												</SelectItem>
-												{/* <SelectItem value='gemini-1.5-pro-latest'>Gemini 2.0 Pro</SelectItem> */}
-											</SelectContent>
-										</Select>
-									</div>
-									<div className='flex items-center space-x-2'>
-										<Switch
-											id='isDefault'
-											checked={personaDetails.isDefault}
-											onCheckedChange={(checked) =>
-												setPersonaDetails((p) => ({
-													...p,
-													isDefault: checked,
-												}))
-											}
-										/>
-										<Label htmlFor='isDefault'>
-											Definir como Padrão para Novas
-											Instâncias
-										</Label>
-									</div>
-								</CardContent>
-							</Card>
+            {/* LISTA DE PERSONAS */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {personas.map(persona => (
+                    <Card key={persona.id} className={cn("relative", persona.is_default ? "border-primary border-2" : "")}>
+                        {persona.is_default && (
+                            <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-2 py-1 text-xs rounded-bl-lg font-medium">
+                                Padrão
+                            </div>
+                        )}
+                         <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <BrainCircuit className="h-5 w-5 text-muted-foreground" />
+                                {persona.persona_name}
+                            </CardTitle>
+                        </CardHeader>
+                         <CardContent>
+                             <div className="space-y-2 text-sm text-muted-foreground">
+                                 <p>Modelo: Automático (Gerenciado por IA)</p>
+                                 <p>Instância Online: {persona.is_online ? <Badge variant="success">Sim</Badge> : <Badge variant="secondary">Não</Badge>}</p>
+                                 {persona.owner_phones && Array.isArray(persona.owner_phones) && persona.owner_phones.length > 0 && (
+                                     <p className="flex items-center gap-1">
+                                         <Shield className="h-3 w-3" /> {persona.owner_phones.length} admins
+                                     </p>
+                                 )}
+                             </div>
+                             <div className="mt-4 flex gap-2 justify-end">
+                                 <Button variant="outline" size="sm" onClick={() => handleEdit(persona)}>
+                                     <Edit3 className="h-4 w-4 mr-1" /> Editar
+                                 </Button>
+                                 <Button variant="ghost" size="sm" onClick={() => handleDelete(persona.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                     <Trash2 className="h-4 w-4" />
+                                 </Button>
+                             </div>
+                         </CardContent>
+                    </Card>
+                ))}
+            </div>
 
-							{/* Seleção de Template */}
-							<Card>
-								<CardHeader>
-									<CardTitle className='text-lg'>
-										Template de Instruções
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<Label htmlFor='templateSelect'>
-										Comece com um modelo (opcional)
+			<Dialog
+				open={showFormDialog}
+				onOpenChange={(isOpen) => {
+					setShowFormDialog(isOpen)
+					if (!isOpen) resetForm()
+				}}
+			>
+				<DialogContent className='max-w-3xl'>
+					{' '}
+					{/* Aumentado para mais campos */}
+					<DialogHeader>
+						<DialogTitle>
+							{editingPersona
+								? 'Editar Configuração da Persona'
+								: 'Nova Configuração de Persona'}
+						</DialogTitle>
+						<DialogDescription>
+							Defina os detalhes e as instruções avançadas
+							para esta IA.
+						</DialogDescription>
+					</DialogHeader>
+					<form
+						onSubmit={handleSubmit}
+						className='space-y-6 py-4 max-h-[80vh] overflow-y-auto pr-2'
+					>
+						{/* Detalhes Básicos da Persona (Nome da Configuração, Modelo, Default) */}
+						<Card>
+							<CardHeader>
+								<CardTitle className='text-lg'>
+									Informações Gerais da Persona
+								</CardTitle>
+							</CardHeader>
+							<CardContent className='space-y-4'>
+								<div>
+									<Label htmlFor='personaDisplayName'>
+										Nome desta Configuração de Persona
 									</Label>
-									<Select
-										value={selectedTemplate}
-										onValueChange={handleTemplateChange}
+									<Input
+										id='personaDisplayName'
+										value={
+											personaDetails.personaDisplayName
+										}
+										onChange={(e) =>
+											setPersonaDetails((p) => ({
+												...p,
+												personaDisplayName:
+													e.target.value,
+											}))
+										}
+										placeholder='Ex: Atendente Clínica Principal'
+										required
+									/>
+								</div>
+								
+                                {/* MODEL SELECT REMOVED - AUTOMATED BACKEND */}
+
+								<div className='flex items-center space-x-2'>
+									<Switch
+										id='isDefault'
+										checked={personaDetails.isDefault}
+										onCheckedChange={(checked) =>
+											setPersonaDetails((p) => ({
+												...p,
+												isDefault: checked,
+											}))
+										}
+									/>
+									<Label htmlFor='isDefault'>
+										Definir como Padrão para Novas
+										Instâncias
+									</Label>
+								</div>
+							</CardContent>
+						</Card>
+
+                         {/* SEÇÃO DE DONOS/ADMINS */}
+                        <Card>
+							<CardHeader>
+								<CardTitle className='text-lg flex items-center gap-2'>
+									<Shield className="h-5 w-5 text-primary" /> Telefones dos Donos (Admins)
+								</CardTitle>
+                                <DialogDescription>
+                                    Estes números serão identificados pela Clara como "chefes", tendo acesso a comandos de sistema e diagnósticos.
+                                </DialogDescription>
+							</CardHeader>
+							<CardContent className='space-y-4'>
+                                <div className="flex gap-2">
+                                    <Input 
+                                        placeholder="Ex: 5511999999999 (apenas números)" 
+                                        value={newOwnerPhone}
+                                        onChange={(e) => setNewOwnerPhone(e.target.value)}
+                                        className="flex-1"
+                                    />
+                                    <Button type="button" onClick={handleAddOwnerPhone} variant="secondary">Adicionar</Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {personaDetails.ownerPhones.length === 0 && (
+                                        <span className="text-sm text-muted-foreground italic">Nenhum telefone de admin configurado.</span>
+                                    )}
+                                    {personaDetails.ownerPhones.map(phone => (
+                                        <Badge key={phone} variant="outline" className="pl-2 pr-1 py-1 flex items-center gap-1">
+                                            {phone}
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-4 w-4 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                                                onClick={() => handleRemoveOwnerPhone(phone)}
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+						{/* Seleção de Template */}
+						<Card>
+							<CardHeader>
+								<CardTitle className='text-lg'>
+									Template de Instruções
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<Label htmlFor='templateSelect'>
+									Comece com um modelo (opcional)
+								</Label>
+								<Select
+									value={selectedTemplate}
+									onValueChange={handleTemplateChange}
+								>
+									<SelectTrigger
+										id='templateSelect'
+										className='w-full mt-1'
 									>
-										<SelectTrigger
-											id='templateSelect'
-											className='w-full mt-1'
-										>
-											<SelectValue placeholder='Selecione um template' />
-										</SelectTrigger>
-										<SelectContent>
-											{Object.entries(
-												personaTemplates
-											).map(([key, template]) => (
-												<SelectItem
-													key={key}
-													value={key}
-												>
-													{template.aiName
-														? `${
-																template.aiName
-														  } para ${
-																key
-																	.charAt(0)
-																	.toUpperCase() +
-																key.slice(1)
-														  }`
-														: key
+										<SelectValue placeholder='Selecione um template' />
+									</SelectTrigger>
+									<SelectContent>
+										{Object.entries(
+											personaTemplates
+										).map(([key, template]) => (
+											<SelectItem
+												key={key}
+												value={key}
+											>
+												{template.aiName
+													? `${
+															template.aiName
+													  } para ${
+															key
 																.charAt(0)
 																.toUpperCase() +
-														  key.slice(1)}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</CardContent>
-							</Card>
+															key.slice(1)
+													  }`
+													: key
+															.charAt(0)
+															.toUpperCase() +
+													  key.slice(1)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</CardContent>
+						</Card>
 
-							{/* Campos Detalhados da Instrução */}
-							<Card>
-								<CardHeader>
-									<CardTitle className='text-lg'>
-										Instruções Detalhadas da IA
-									</CardTitle>
-								</CardHeader>
-								<CardContent className='space-y-4'>
-									{canCustomizeAiName && (
-										<div>
-											<Label htmlFor='customAiName'>
-												Nome da IA (Personalizável)
-											</Label>
-											<Input
-												id='customAiName'
-												name='customAiName'
-												value={
-													instructionFormData.customAiName
-												}
-												onChange={(e) =>
-													handleInstructionInputChange(
-														e
-													)
-												}
-												placeholder='Ex: Bia, Max, Atendente Digital'
-											/>
-											<p className='text-xs text-muted-foreground mt-1'>
-												Seu plano permite um nome
-												customizado. Deixe &ldquo;Clara&ldquo; para
-												um possível desconto.
-											</p>
-										</div>
-									)}
-									<p className='text-sm font-semibold'>
-										A IA se apresentará como:{' '}
-										<span className='text-primary'>
-											{currentAiName}
-										</span>
-										{getsDiscount &&
-											canCustomizeAiName &&
-											currentAiName === 'Clara' && (
-												<Badge
-													variant='outline'
-													className='ml-2 bg-green-100 text-green-700 border-green-300'
-												>
-													Desconto Aplicável
-												</Badge>
-											)}
-									</p>
-
+						{/* Campos Detalhados da Instrução */}
+						<Card>
+							<CardHeader>
+								<CardTitle className='text-lg'>
+									Instruções Detalhadas da IA
+								</CardTitle>
+							</CardHeader>
+							<CardContent className='space-y-4'>
+								{canCustomizeAiName && (
 									<div>
-										<Label htmlFor='identityObjective'>
-											Identidade e Objetivo Principal
-										</Label>
-										<Textarea
-											id='identityObjective'
-											name='identityObjective'
-											value={
-												instructionFormData.identityObjective
-											}
-											onChange={(e) =>
-												handleInstructionInputChange(e)
-											}
-											rows={3}
-											placeholder='Ex: Seu nome é [Nome da IA], uma recepcionista virtual de IA para [Nome da Clínica/Empresa]...'
-										/>
-									</div>
-									<div>
-										<Label htmlFor='communicationStyle'>
-											Estilo de Comunicação
-										</Label>
-										<Textarea
-											id='communicationStyle'
-											name='communicationStyle'
-											value={
-												instructionFormData.communicationStyle
-											}
-											onChange={(e) =>
-												handleInstructionInputChange(e)
-											}
-											rows={3}
-											placeholder='Ex: Seja empática, acolhedora, use linguagem informal e amigável...'
-										/>
-									</div>
-
-									<Label className='font-medium'>
-										Base de Conhecimento
-									</Label>
-									{instructionFormData.knowledgeBase.map(
-										(kb, index) => (
-											<Card
-												key={index}
-												className='p-3 space-y-2 bg-muted/50'
-											>
-												<Input
-													value={kb.title}
-													onChange={(e) =>
-														handleInstructionInputChange(
-															e,
-															'knowledgeBase',
-															index,
-															'title'
-														)
-													}
-													placeholder='Título da Seção (Ex: Sobre a Clínica)'
-												/>
-												<Textarea
-													value={kb.content}
-													onChange={(e) =>
-														handleInstructionInputChange(
-															e,
-															'knowledgeBase',
-															index,
-															'content'
-														)
-													}
-													placeholder='Conteúdo da seção...'
-													rows={3}
-												/>
-												<Button
-													type='button'
-													variant='ghost'
-													size='sm'
-													onClick={() =>
-														removeKnowledgeSection(
-															index
-														)
-													}
-													className='text-destructive hover:text-destructive'
-												>
-													Remover Seção
-												</Button>
-											</Card>
-										)
-									)}
-									<Button
-										type='button'
-										variant='outline'
-										size='sm'
-										onClick={addKnowledgeSection}
-									>
-										Adicionar Seção de Conhecimento
-									</Button>
-
-									{/* Outros campos: limitations, humanHandoffKeywords, etc. como Textareas */}
-									<div>
-										<Label htmlFor='limitations'>
-											Limitações e Proibições
-										</Label>
-										<Textarea
-											id='limitations'
-											name='limitations'
-											value={
-												instructionFormData.limitations
-											}
-											onChange={(e) =>
-												handleInstructionInputChange(e)
-											}
-											rows={3}
-										/>
-									</div>
-									<div>
-										<Label htmlFor='humanHandoffKeywords'>
-											Palavras-chave para Encaminhamento
-											Humano
-										</Label>
-										<Textarea
-											id='humanHandoffKeywords'
-											name='humanHandoffKeywords'
-											value={
-												instructionFormData.humanHandoffKeywords
-											}
-											onChange={(e) =>
-												handleInstructionInputChange(e)
-											}
-											rows={2}
-											placeholder='Ex: problema, cancelar, falar com gerente'
-										/>
-									</div>
-									<div>
-										<Label htmlFor='humanHandoffContact'>
-											Contato para Encaminhamento Humano
+										<Label htmlFor='customAiName'>
+											Nome da IA (Personalizável)
 										</Label>
 										<Input
-											id='humanHandoffContact'
-											name='humanHandoffContact'
+											id='customAiName'
+											name='customAiName'
 											value={
-												instructionFormData.humanHandoffContact
+												instructionFormData.customAiName
 											}
 											onChange={(e) =>
-												handleInstructionInputChange(e)
+												handleInstructionInputChange(
+													e
+												)
 											}
-											placeholder='Ex: WhatsApp (XX) XXXXX-XXXX ou telefone YYYY-YYYY'
+											placeholder='Ex: Bia, Max, Atendente Digital'
 										/>
+										<p className='text-xs text-muted-foreground mt-1'>
+											Seu plano permite um nome
+											customizado. Deixe &ldquo;Clara&ldquo; para
+											um possível desconto.
+										</p>
 									</div>
-									{/* ... Adicionar todos os campos de instructionFormData como Inputs/Textareas ... */}
-									{/* Exemplo para salesFunnelStages (mais complexo, pode precisar de um componente dedicado) */}
-
-									<div>
-										<Label htmlFor='formattingGuidelines'>
-											Diretrizes de Formatação
-										</Label>
-										<Textarea
-											id='formattingGuidelines'
-											name='formattingGuidelines'
-											value={
-												instructionFormData.formattingGuidelines
-											}
-											onChange={(e) =>
-												handleInstructionInputChange(e)
-											}
-											rows={2}
-										/>
-									</div>
-									<div>
-										<Label htmlFor='additionalContext'>
-											Contexto Adicional (Opcional)
-										</Label>
-										<Textarea
-											id='additionalContext'
-											name='additionalContext'
-											value={
-												instructionFormData.additionalContext ||
-												''
-											}
-											onChange={(e) =>
-												handleInstructionInputChange(e)
-											}
-											rows={3}
-										/>
-									</div>
-								</CardContent>
-							</Card>
-
-							<DialogFooter>
-								<DialogClose asChild>
-									<Button type='button' variant='outline'>
-										Cancelar
-									</Button>
-								</DialogClose>
-								<Button type='submit' disabled={isSubmitting}>
-									{isSubmitting
-										? editingPersona
-											? 'Salvando...'
-											: 'Criando...'
-										: editingPersona
-										? 'Salvar Alterações'
-										: 'Criar Persona'}
-								</Button>
-							</DialogFooter>
-						</form>
-					</DialogContent>
-				</Dialog>
-				{subscriptionInfo &&
-					personas.length >= subscriptionInfo.maxPersonas &&
-					!editingPersona && (
-						<p className='text-sm text-red-500 dark:text-red-400'>
-							Você atingiu o limite de personas para o seu plano.
-						</p>
-					)}
-				<div className='grid md:grid-cols-2 lg:grid-cols-3 gap-6'>
-					{personas.map((persona) => (
-						<Card key={persona.id} className='flex flex-col'>
-							<CardHeader>
-								<div className='flex justify-between items-start'>
-									<CardTitle className='text-xl'>
-										{persona.persona_name}
-									</CardTitle>
-									<BrainCircuit className='h-6 w-6 text-primary' />
-								</div>
-								<p className='text-xs text-muted-foreground'>
-									Modelo: {persona.model} (IA:{' '}
-									{(persona.instruction as PersonaInstruction)
-										?.aiName || 'N/A'}
-									)
-								</p>
-								{persona.is_default && (
-									<Badge variant='outline' className='w-fit'>
-										{' '}
-										Padrão{' '}
-									</Badge>
 								)}
-							</CardHeader>
-							<CardContent className='flex-grow'>
-								<p className='text-sm text-muted-foreground line-clamp-3'>
-									Objetivo:{' '}
-									{(persona.instruction as PersonaInstruction)
-										?.identityObjective ||
-										JSON.stringify(persona.instruction)}
+								<p className='text-sm font-semibold'>
+									A IA se apresentará como:{' '}
+									<span className='text-primary'>
+										{currentAiName}
+									</span>
+									{getsDiscount &&
+										canCustomizeAiName &&
+										currentAiName === 'Clara' && (
+											<Badge
+												variant='outline'
+												className='ml-2 bg-green-100 text-green-700 border-green-300'
+											>
+												Desconto Aplicável
+											</Badge>
+										)}
 								</p>
-							</CardContent>
-							<div className='p-4 border-t flex gap-2'>
+
+								<div>
+									<Label htmlFor='identityObjective'>
+										Identidade e Objetivo Principal
+									</Label>
+									<Textarea
+										id='identityObjective'
+										name='identityObjective'
+										value={
+											instructionFormData.identityObjective
+										}
+										onChange={(e) =>
+											handleInstructionInputChange(e)
+										}
+										rows={3}
+										placeholder='Ex: Seu nome é [Nome da IA], uma recepcionista virtual de IA para [Nome da Clínica/Empresa]...'
+									/>
+								</div>
+								<div>
+									<Label htmlFor='communicationStyle'>
+										Estilo de Comunicação
+									</Label>
+									<Textarea
+										id='communicationStyle'
+										name='communicationStyle'
+										value={
+											instructionFormData.communicationStyle
+										}
+										onChange={(e) =>
+											handleInstructionInputChange(e)
+										}
+										rows={3}
+										placeholder='Ex: Seja empática, acolhedora, use linguagem informal e amigável...'
+									/>
+								</div>
+
+								<Label className='font-medium'>
+									Base de Conhecimento
+								</Label>
+								{instructionFormData.knowledgeBase.map(
+									(kb, index) => (
+										<Card
+											key={index}
+											className='p-3 space-y-2 bg-muted/50'
+										>
+											<Input
+												value={kb.title}
+												onChange={(e) =>
+													handleInstructionInputChange(
+														e,
+														'knowledgeBase',
+														index,
+														'title'
+													)
+												}
+												placeholder='Título da Seção (Ex: Sobre a Clínica)'
+											/>
+											<Textarea
+												value={kb.content}
+												onChange={(e) =>
+													handleInstructionInputChange(
+														e,
+														'knowledgeBase',
+														index,
+														'content'
+													)
+												}
+												placeholder='Conteúdo da seção...'
+												rows={3}
+											/>
+											<Button
+												type='button'
+												variant='ghost'
+												size='sm'
+												onClick={() =>
+													removeKnowledgeSection(
+														index
+													)
+												}
+												className='text-destructive hover:text-destructive'
+											>
+												Remover Seção
+											</Button>
+										</Card>
+									)
+								)}
 								<Button
+									type='button'
 									variant='outline'
 									size='sm'
-									onClick={() => handleEdit(persona)}
-									className='flex-1'
+									onClick={addKnowledgeSection}
 								>
-									<Edit3 className='mr-2 h-4 w-4' /> Editar
+									Adicionar Seção de Conhecimento
 								</Button>
-								<Button
-									variant='destructive'
-									size='sm'
-									onClick={() => handleDelete(persona.id)}
-									className='flex-1'
-									disabled={
-										persona.is_default &&
-										personas.length <= 1
-									}
-								>
-									<Trash2 className='mr-2 h-4 w-4' /> Deletar
-								</Button>
-							</div>
+
+								{/* Outros campos: limitations, humanHandoffKeywords, etc. como Textareas */}
+								<div>
+									<Label htmlFor='limitations'>
+										Limitações e Proibições
+									</Label>
+									<Textarea
+										id='limitations'
+										name='limitations'
+										value={
+											instructionFormData.limitations
+										}
+										onChange={(e) =>
+											handleInstructionInputChange(e)
+										}
+										rows={3}
+									/>
+								</div>
+								<div>
+									<Label htmlFor='humanHandoffKeywords'>
+										Palavras-chave para Encaminhamento
+										Humano
+									</Label>
+									<Textarea
+										id='humanHandoffKeywords'
+										name='humanHandoffKeywords'
+										value={
+											instructionFormData.humanHandoffKeywords
+										}
+										onChange={(e) =>
+											handleInstructionInputChange(e)
+										}
+										rows={2}
+										placeholder='Ex: problema, cancelar, falar com gerente'
+									/>
+								</div>
+								<div>
+									<Label htmlFor='humanHandoffContact'>
+										Contato para Encaminhamento Humano
+									</Label>
+									<Input
+										id='humanHandoffContact'
+										name='humanHandoffContact'
+										value={
+											instructionFormData.humanHandoffContact
+										}
+										onChange={(e) =>
+											handleInstructionInputChange(e)
+										}
+										placeholder='Ex: WhatsApp (XX) XXXXX-XXXX ou telefone YYYY-YYYY'
+									/>
+								</div>
+								{/* ... Adicionar todos os campos de instructionFormData como Inputs/Textareas ... */}
+								{/* Exemplo para salesFunnelStages (mais complexo, pode precisar de um componente dedicado) */}
+
+								<div>
+									<Label htmlFor='formattingGuidelines'>
+										Diretrizes de Formatação
+									</Label>
+									<Textarea
+										id='formattingGuidelines'
+										name='formattingGuidelines'
+										value={
+											instructionFormData.formattingGuidelines
+										}
+										onChange={(e) =>
+											handleInstructionInputChange(e)
+										}
+										rows={2}
+									/>
+								</div>
+								<div>
+									<Label htmlFor='additionalContext'>
+										Contexto Adicional (Opcional)
+									</Label>
+									<Textarea
+										id='additionalContext'
+										name='additionalContext'
+										value={
+											instructionFormData.additionalContext ||
+											''
+										}
+										onChange={(e) =>
+											handleInstructionInputChange(e)
+										}
+										rows={3}
+									/>
+								</div>
+							</CardContent>
 						</Card>
-					))}
-					{personas.length === 0 && !isLoading && (
-						<p className='text-muted-foreground col-span-full text-center py-8'>
-							Nenhuma persona configurada ainda. Crie uma para
-							começar!
-						</p>
-					)}
-				</div>
-			</div>
+
+						<DialogFooter>
+							<DialogClose asChild>
+								<Button type='button' variant='outline'>
+									Cancelar
+								</Button>
+							</DialogClose>
+							<Button type='submit' disabled={isSubmitting}>
+								{isSubmitting
+									? editingPersona
+										? 'Salvando...'
+										: 'Criando...'
+									: editingPersona
+									? 'Salvar Alterações'
+									: 'Criar Persona'}
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+			{subscriptionInfo &&
+				personas.length >= subscriptionInfo.maxPersonas &&
+				!editingPersona && (
+					<p className='text-sm text-red-500 dark:text-red-400'>
+						Você atingiu o limite de personas para o seu plano.
+					</p>
+				)}
 		</div>
 	)
 }
