@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+// import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const logger = console;
 
@@ -357,15 +357,17 @@ export default function GoogleIntegrationPage() {
                             3. Regras de Agendamento Personalizadas
                             <Badge variant="secondary" className="text-xs font-normal">IA Rules 👩‍⚖️</Badge>
                         </Label>
-                        <Alert className="bg-muted/50 border-primary/20">
-                            <Info className="h-4 w-4" />
-                            <AlertTitle>Como isso funciona?</AlertTitle>
-                            <AlertDescription className="text-sm text-muted-foreground">
+                        <div className="bg-muted/50 border border-primary/20 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Info className="h-4 w-4" />
+                                <h5 className="font-semibold leading-none tracking-tight">Como isso funciona?</h5>
+                            </div>
+                            <div className="text-sm text-muted-foreground pl-6">
                                 Descreva regras que <strong>bloqueiam</strong> a Clara de agendar. 
                                 Ex: "Não agende nada nas quartas de manhã" ou "Só agende após o almoço". 
                                 A IA lerá isso antes de confirmar qualquer horário.
-                            </AlertDescription>
-                        </Alert>
+                            </div>
+                        </div>
                         <Textarea 
                             placeholder="Ex: Minha agenda é bloqueada todas as segundas de manhã. Não marque pacientes das 12h as 14h..." 
                             className="min-h-[120px] text-base resize-none"
