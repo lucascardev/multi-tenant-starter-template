@@ -173,9 +173,13 @@ export default function MyPlanPage() {
               <CardDescription className="text-sm h-12 line-clamp-2">{plan.description}</CardDescription> {/* Altura fixa e line-clamp */}
               <p className="text-3xl font-bold text-foreground pt-3">
                 R$ {plan.price_monthly.toFixed(2)}
-                <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                <span className="text-sm font-normal text-muted-foreground ml-1">/mês</span>
               </p>
-            </CardHeader>
+              {currentPlanId === plan.id && currentSubscription?.status === 'active' && (
+                  <div className="mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground hover:bg-primary/80">
+                      Plano Atual
+                  </div>
+              )}            </CardHeader>
             <CardContent className="flex-grow">
               <h4 className="text-sm font-medium mb-2 text-muted-foreground">Recursos incluídos:</h4>
               <ul className="space-y-1.5">
@@ -185,10 +189,6 @@ export default function MyPlanPage() {
                     {feature}
                   </li>
                 ))}
-                <li className="flex items-center text-sm"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />{plan.max_instances_count} Instância(s) WhatsApp</li>
-                <li className="flex items-center text-sm"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />{plan.max_personas_count} Persona(s) de IA</li>
-                <li className="flex items-center text-sm"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />{plan.max_messages_count.toLocaleString('pt-BR')} Mensagens/mês</li>
-                 <li className="flex items-center text-sm"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />{plan.max_customers_count.toLocaleString('pt-BR')} Clientes Atendidos/mês</li>
               </ul>
             </CardContent>
             <CardFooter className="border-t pt-4">
