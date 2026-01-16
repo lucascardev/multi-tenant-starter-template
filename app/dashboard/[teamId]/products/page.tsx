@@ -2,12 +2,13 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, FormEvent } from 'react';
-import { useUser } from '@stackframe/stack'; // Removido useTeam, não usado diretamente
+import { useUser } from '@stackframe/stack'; 
 import { useParams } from 'next/navigation';
 import apiClient from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Link as LinkIcon, Calendar, Contact2, ShieldCheck, ArrowRightLeft, UploadCloud, ArrowLeft, LogOut, Info, BookOpen, CheckCircle2, AlertTriangle, X } from "lucide-react";
+import Image from "next/image";
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
@@ -19,22 +20,22 @@ import { Label } from '@/components/ui/label';
 
 const logger = console;
 
-interface SubscriptionPlanData { // Renomeado para evitar conflito com o tipo Prisma
+interface SubscriptionPlanData {
   id: string;
   plan_name: string;
   price_monthly: number;
   currency: string;
   description: string;
-  features: string[]; // Permite array ou JsonValue
+  features: string[];
   max_instances_count: number;
   max_personas_count: number;
   max_messages_count: number;
   max_customers_count: number;
-  stripe_price_id_monthly?: string; // Opcional
+  stripe_price_id_monthly?: string;
 }
 
-interface CurrentSubscriptionInfoData { // Renomeado
-  plan_id?: string; // Adicionado
+interface CurrentSubscriptionInfoData {
+  plan_id?: string;
   plan_name: string;
   status: string;
   max_instances_count?: number;
@@ -45,13 +46,11 @@ interface CurrentSubscriptionInfoData { // Renomeado
   description?: string;
   price_monthly?: number;
   currency?: string;
-  // Adicione mais campos se a API /subscriptions/current retornar
 }
 
 export default function MyPlanPage() {
   const user = useUser({ or: "redirect" });
-  const params = useParams<{ teamId: string }>(); // teamId do Stack Auth
-  // const team = user?.useTeam(params.teamId); // Não é estritamente necessário se as APIs são baseadas no token do usuário
+  const params = useParams<{ teamId: string }>();
 
   const [plans, setPlans] = useState<SubscriptionPlanData[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscriptionInfoData | null>(null);
@@ -61,9 +60,10 @@ export default function MyPlanPage() {
   const [showActivationDialog, setShowActivationDialog] = useState(false);
   const [selectedPlanForActivation, setSelectedPlanForActivation] = useState<SubscriptionPlanData | null>(null);
   const [activationCode, setActivationCode] = useState("");
+  const [showBrDidDialog, setShowBrDidDialog] = useState(false);
 
   const fetchPlanData = useCallback(async (showSpinner = true) => {
-    if (!user) return; // user vem de useUser({or:"redirect"}) então deve estar definido
+    if (!user) return;
     if (showSpinner) setIsLoading(true);
     try {
       const [plansRes, currentSubRes] = await Promise.all([
@@ -72,26 +72,24 @@ export default function MyPlanPage() {
       ]);
 
       setPlans(plansRes.data.plans || []);
-      setCurrentSubscription(currentSubRes.data || null); // Garante que seja null se não houver dados
+      setCurrentSubscription(currentSubRes.data || null);
       logger.info("Dados de planos e assinatura carregados:", { plans: plansRes.data, current: currentSubRes.data });
     } catch (error: any) {
       logger.error("Erro ao buscar dados dos planos:", error.response?.data || error.message);
       toast.error(error.response?.data?.message || "Não foi possível carregar os dados dos planos.");
-      // Se não conseguir carregar a assinatura atual, pode definir como um estado de "erro" ou "sem plano"
       setCurrentSubscription(null);
     } finally {
       if (showSpinner) setIsLoading(false);
     }
-  }, [user]); // Removido team das dependências se não for usado no fetch
+  }, [user]);
 
   useEffect(() => {
-    if (user) { // Somente executa se user estiver definido
+    if (user) {
         fetchPlanData(true);
     }
-  }, [user, fetchPlanData]); // Adicionado fetchPlanData às dependências
+  }, [user, fetchPlanData]);
 
   const handleOpenActivationDialog = (plan: SubscriptionPlanData) => {
-    // Não permitir "ativar" o plano gratuito com código
     if (plan.id === 'free_tier_01' && currentSubscription?.plan_id !== 'free_tier_01') {
         toast.info("O plano gratuito é aplicado automaticamente ou contate o suporte para downgrade.");
         return;
@@ -101,7 +99,7 @@ export default function MyPlanPage() {
         return;
     }
     setSelectedPlanForActivation(plan);
-    setActivationCode(""); // Limpa código anterior
+    setActivationCode("");
     setShowActivationDialog(true);
   };
 
@@ -121,7 +119,7 @@ export default function MyPlanPage() {
       setShowActivationDialog(false);
       setSelectedPlanForActivation(null);
       setActivationCode("");
-      await fetchPlanData(true); // Re-busca os dados para atualizar a UI
+      await fetchPlanData(true);
     } catch (error: any) {
       logger.error("Erro ao ativar plano:", error.response?.data || error.message);
       toast.error(error.response?.data?.message || "Falha ao ativar o plano. Verifique o código.");
@@ -130,8 +128,8 @@ export default function MyPlanPage() {
     }
   };
 
-  if (isLoading) { /* ... Skeleton UI ... */ }
-  if (!user) { /* ... Mensagem de carregamento/erro de usuário ... */ } // user deve estar definido devido ao or:"redirect"
+  if (isLoading) { return <Skeleton className="w-full h-screen" />; }
+  if (!user) { return <div>Carregando...</div>; }
 
   const currentPlanId = currentSubscription?.plan_id || (currentSubscription?.status === 'default_free' ? 'free_tier_01' : null);
 
@@ -150,7 +148,6 @@ export default function MyPlanPage() {
             <CardTitle className="text-lg">Seu Plano Atual: <span className="text-primary">{currentSubscription.plan_name}</span></CardTitle>
             <CardDescription>Status: <span className={currentSubscription.status === 'active' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>{currentSubscription.status.toUpperCase()}</span></CardDescription>
           </CardHeader>
-          {/* Adicionar mais detalhes da assinatura atual se desejar */}
         </Card>
       )}
        {currentSubscription && currentSubscription.status === 'default_free' && (
@@ -204,6 +201,58 @@ export default function MyPlanPage() {
         ))}
       </div>
 
+      {/* BR DID Recommendation Section */}
+      <section className="bg-gradient-to-r from-gray-900 via-gray-800 to-black text-white rounded-xl overflow-hidden shadow-2xl border border-gray-700">
+        <div className="flex flex-col md:flex-row items-center">
+            <div className="p-8 md:w-3/5 space-y-6">
+                 <div className="space-y-2">
+                    <div className="flex items-center gap-3 mb-2">
+                       <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border border-green-500/30">Recomendação Oficial</span>
+                    </div>
+                    <h2 className="text-3xl font-extrabold tracking-tight">Precisa de um número para sua empresa?</h2>
+                    <p className="text-gray-300 text-lg leading-relaxed">
+                        Não use seu número pessoal! Profissionalize seu atendimento com um <span className="text-green-400 font-semibold">Número Virtual</span> da nossa parceira BR DID.
+                    </p>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                        <CheckCircle2 className="h-5 w-5 text-green-400 mb-2" />
+                        <h4 className="font-semibold">Ativação Imediata</h4>
+                        <p className="text-sm text-gray-400">Tenha seu número funcionando em minutos.</p>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                         <CheckCircle2 className="h-5 w-5 text-green-400 mb-2" />
+                        <h4 className="font-semibold"> DDD de todo Brasil</h4>
+                        <p className="text-sm text-gray-400">Escolha números de qualquer região.</p>
+                    </div>
+                 </div>
+
+                 <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                    <Button onClick={() => setShowBrDidDialog(true)} size="lg" variant="secondary" className="font-semibold shadow-lg hover:scale-105 transition-transform">
+                        <span className="mr-2">📚</span> Ver Tutorial Rápido
+                    </Button>
+                    <Button asChild size="lg" className="bg-green-600 hover:bg-green-500 text-white font-bold shadow-lg shadow-green-900/20 hover:scale-105 transition-transform border-0">
+                        <a href="https://brdid.com.br" target="_blank" rel="noopener noreferrer">
+                            Ir para BR DID <span className="ml-2">→</span>
+                        </a>
+                    </Button>
+                 </div>
+            </div>
+            <div className="md:w-2/5 h-full min-h-[300px] relative bg-white flex items-center justify-center p-8">
+                <div className="relative w-full h-[150px]">
+                     <Image 
+                        src="/brdid-logo.png" 
+                        alt="BR DID Logo" 
+                        fill 
+                        style={{ objectFit: "contain" }}
+                        className="drop-shadow-xl"
+                     />
+                </div>
+            </div>
+        </div>
+      </section>
+
       {/* Dialog para Ativação de Plano */}
       <Dialog open={showActivationDialog} onOpenChange={setShowActivationDialog}>
         <DialogContent className="sm:max-w-[425px]">
@@ -235,6 +284,74 @@ export default function MyPlanPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog Tutorial BR DID */}
+      <Dialog open={showBrDidDialog} onOpenChange={setShowBrDidDialog}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+                <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                    <Image src="/brdid-logo.png" alt="BR DID" width={100} height={40} className="object-contain" />
+                    <span>Tutorial de Contratação</span>
+                </DialogTitle>
+                <DialogDescription>
+                    Siga este passo a passo para contratar e configurar seu número virtual.
+                </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+                <ol className="relative border-l border-gray-200 dark:border-gray-700 ml-3 space-y-8">                  
+                    <li className="mb-6 ml-6">
+                        <span className="absolute flex items-center justify-center w-8 h-8 bg-green-100 rounded-full -left-4 ring-8 ring-white dark:ring-gray-900 dark:bg-green-900">
+                            <span className="font-bold text-green-600 dark:text-green-300">1</span>
+                        </span>
+                        <h3 className="flex items-center mb-1 text-lg font-semibold text-gray-900 dark:text-white">Acesse a BR DID</h3>
+                        <p className="mb-4 text-base font-normal text-gray-500 dark:text-gray-400">
+                            Entre no site <a href="https://brdid.com.br" target="_blank" className="text-blue-600 hover:underline">brdid.com.br</a>, faça seu cadastro e login no painel.
+                        </p>
+                    </li>
+                    <li className="mb-6 ml-6">
+                        <span className="absolute flex items-center justify-center w-8 h-8 bg-green-100 rounded-full -left-4 ring-8 ring-white dark:ring-gray-900 dark:bg-green-900">
+                            <span className="font-bold text-green-600 dark:text-green-300">2</span>
+                        </span>
+                        <h3 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Contrate um "Número VoIP"</h3>
+                        <p className="text-base font-normal text-gray-500 dark:text-gray-400">
+                            No menu, vá em <strong>Contratar Novos Números VoIP</strong>. Escolha o DDD, Cidade e o número desejado.
+                            <br/><em>Recomendamos pagamento via Cartão de Crédito para renovação automática.</em>
+                        </p>
+                    </li>
+                    <li className="mb-6 ml-6">
+                        <span className="absolute flex items-center justify-center w-8 h-8 bg-green-100 rounded-full -left-4 ring-8 ring-white dark:ring-gray-900 dark:bg-green-900">
+                             <span className="font-bold text-green-600 dark:text-green-300">3</span>
+                        </span>
+                        <h3 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Configure no WhatsApp Business</h3>
+                        <div className="p-4 bg-muted rounded-lg text-sm space-y-2 mt-2">
+                             <p>1. Abra o WhatsApp Business e insira o número comprado.</p>
+                             <p>2. Aguarde o contador de SMS zerar e selecione <strong>"Não recebi o código"</strong> -> <strong>"Me Ligue"</strong>.</p>
+                             <p>3. Volte ao painel da BR DID. O código de verificação aparecerá lá em alguns minutos (5-10min).</p>
+                             <p>4. Insira o código no WhatsApp e pronto!</p>
+                        </div>
+                    </li>
+                </ol>
+
+                <div className="bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 rounded-lg p-4 flex gap-3">
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div>
+                        <h5 className="font-semibold text-blue-900 dark:text-blue-100">Dica Profissional</h5>
+                        <div className="text-sm text-blue-800 dark:text-blue-200">
+                            Configure o pagamento recorrente para não perder seu número. Ele é a identidade da sua empresa!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <DialogFooter>
+                <DialogClose asChild><Button variant="outline">Fechar</Button></DialogClose>
+                <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                    <a href="https://brdid.com.br" target="_blank" rel="noopener noreferrer">Contratar Agora</a>
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
