@@ -5,17 +5,19 @@ import { useUser } from "@stackframe/stack";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea"; // Adicionado Textarea
 import { toast } from "sonner";
 import apiClient from "@/lib/axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link as LinkIcon, Calendar, Contact2, ShieldCheck, ArrowRightLeft, UploadCloud, ArrowLeft, LogOut } from "lucide-react";
+import { Link as LinkIcon, Calendar, Contact2, ShieldCheck, ArrowRightLeft, UploadCloud, ArrowLeft, LogOut, Info, BookOpen } from "lucide-react";
 import Image from "next/image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const logger = console;
 
@@ -26,6 +28,7 @@ interface GoogleConfigData {
   syncAppointmentsToCalendar: boolean;
   readCalendarForAvailability: boolean;
   syncContactsToGoogle: boolean;
+  schedulerInstruction?: string | null; // Adicionado
   errorMessage?: string | null;
 }
 
@@ -48,6 +51,7 @@ export default function GoogleIntegrationPage() {
   const [googleConfig, setGoogleConfig] = useState<GoogleConfigData>({
     isActive: false, email: null, selectedCalendarId: null,
     syncAppointmentsToCalendar: false, readCalendarForAvailability: false, syncContactsToGoogle: false,
+    schedulerInstruction: "",
   });
   const [calendarStrategy, setCalendarStrategy] = useState<CalendarStrategy>('none');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -75,6 +79,7 @@ export default function GoogleIntegrationPage() {
         syncAppointmentsToCalendar: config.syncAppointmentsToCalendar || false,
         readCalendarForAvailability: config.readCalendarForAvailability || false,
         syncContactsToGoogle: config.syncContactsToGoogle || false,
+        schedulerInstruction: config.schedulerInstruction || "",
         errorMessage: config.errorMessage || null,
       });
       setCalendarStrategy(determineStrategy(config));
@@ -85,7 +90,7 @@ export default function GoogleIntegrationPage() {
       }
     } catch (error: any) {
       logger.error("Erro ao buscar config Google:", error.response?.data || error.message);
-      setGoogleConfig({ isActive: false, email: null, selectedCalendarId: null, syncAppointmentsToCalendar: false, readCalendarForAvailability: false, syncContactsToGoogle: false, errorMessage: "Falha ao carregar configuração." });
+      setGoogleConfig({ isActive: false, email: null, selectedCalendarId: null, syncAppointmentsToCalendar: false, readCalendarForAvailability: false, syncContactsToGoogle: false, schedulerInstruction: "", errorMessage: "Falha ao carregar configuração." });
     } finally {
       setIsFetchingGoogleConfig(false);
     }
@@ -148,6 +153,7 @@ export default function GoogleIntegrationPage() {
         syncAppointmentsToCalendar: googleConfig.syncAppointmentsToCalendar,
         readCalendarForAvailability: googleConfig.readCalendarForAvailability,
         syncContactsToGoogle: googleConfig.syncContactsToGoogle,
+        schedulerInstruction: googleConfig.schedulerInstruction,
         isActive: googleConfig.isActive,
       };
       
@@ -173,7 +179,7 @@ export default function GoogleIntegrationPage() {
     try {
         await apiClient.post('/integrations/google/disconnect');
         toast.success("Desconectado.");
-        setGoogleConfig({ isActive: false, email:null, selectedCalendarId: null, syncAppointmentsToCalendar: false, readCalendarForAvailability: false, syncContactsToGoogle: false, errorMessage: null });
+        setGoogleConfig({ isActive: false, email:null, selectedCalendarId: null, syncAppointmentsToCalendar: false, readCalendarForAvailability: false, syncContactsToGoogle: false, schedulerInstruction: "", errorMessage: null });
         setUserCalendars([]);
         setCalendarStrategy('none');
     } catch (error) {
@@ -204,7 +210,7 @@ export default function GoogleIntegrationPage() {
                 Integração Google
             </h1>
             <p className="text-muted-foreground mt-1">
-            Configure a estratégia de agenda e sincronização.
+            Configure a estratégia de agenda e sincronização personalizadas.
             </p>
         </div>
       </header>
@@ -249,6 +255,7 @@ export default function GoogleIntegrationPage() {
                         </Button>
                     </div>
 
+                     {/* 1. SELEÇÃO DE CALENDÁRIO & CONTATOS */}
                     <div className="grid md:grid-cols-2 gap-8">
                         {/* Calendar Selection */}
                         <div className="space-y-4">
@@ -269,10 +276,9 @@ export default function GoogleIntegrationPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="text-sm text-muted-foreground">Selecione onde a Clara deve verificar disponibilidade ou criar eventos.</p>
+                            <p className="text-sm text-muted-foreground">O calendário onde a Clara verificará disponibilidade.</p>
                         </div>
 
-                        {/* Contacts Additional Feature */}
                          <div className="space-y-4">
                              <Label className="text-base">Funcionalidades Extras</Label>
                              <div className="flex items-center justify-between p-3 border rounded-lg h-12">
@@ -289,7 +295,7 @@ export default function GoogleIntegrationPage() {
                          </div>
                     </div>
 
-                    {/* INTENT / STRATEGY SECTION */}
+                    {/* 2. ESTRATÉGIA (INTENT) */}
                     <div className="space-y-4 pt-4 border-t">
                         <Label className="text-lg font-semibold">2. Qual é a estratégia da Clara com este calendário?</Label>
                         <RadioGroup value={calendarStrategy} onValueChange={(val) => handleStrategyChange(val as CalendarStrategy)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -342,6 +348,30 @@ export default function GoogleIntegrationPage() {
                                 </div>
                             </Label>
                         </RadioGroup>
+                    </div>
+
+                    {/* 3. REGRAS PERSONALIZADAS (NEW!) */}
+                    <div className="space-y-4 pt-4 border-t">
+                        <Label className="text-lg font-semibold flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-primary" />
+                            3. Regras de Agendamento Personalizadas
+                            <Badge variant="secondary" className="text-xs font-normal">IA Rules 👩‍⚖️</Badge>
+                        </Label>
+                        <Alert className="bg-muted/50 border-primary/20">
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Como isso funciona?</AlertTitle>
+                            <AlertDescription className="text-sm text-muted-foreground">
+                                Descreva regras que <strong>bloqueiam</strong> a Clara de agendar. 
+                                Ex: "Não agende nada nas quartas de manhã" ou "Só agende após o almoço". 
+                                A IA lerá isso antes de confirmar qualquer horário.
+                            </AlertDescription>
+                        </Alert>
+                        <Textarea 
+                            placeholder="Ex: Minha agenda é bloqueada todas as segundas de manhã. Não marque pacientes das 12h as 14h..." 
+                            className="min-h-[120px] text-base resize-none"
+                            value={googleConfig.schedulerInstruction || ""}
+                            onChange={(e) => setGoogleConfig(prev => ({ ...prev, schedulerInstruction: e.target.value }))}
+                        />
                     </div>
 
                     <div className="pt-6">
