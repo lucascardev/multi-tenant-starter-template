@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch'; // Import Switch
 
 const logger = console;
 
@@ -61,6 +62,7 @@ export default function MyPlanPage() {
   const [selectedPlanForActivation, setSelectedPlanForActivation] = useState<SubscriptionPlanData | null>(null);
   const [activationCode, setActivationCode] = useState("");
   const [showBrDidDialog, setShowBrDidDialog] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly'); // Add billingCycle state
 
   const fetchPlanData = useCallback(async (showSpinner = true) => {
     if (!user) return;
@@ -142,6 +144,17 @@ export default function MyPlanPage() {
         </p>
       </div>
 
+      <div className="flex justify-center items-center gap-4 py-4">
+        <span className={`text-sm font-medium ${billingCycle === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>Mensal</span>
+        <Switch
+            checked={billingCycle === 'yearly'}
+            onCheckedChange={(checked) => setBillingCycle(checked ? 'yearly' : 'monthly')}
+        />
+        <span className={`text-sm font-medium ${billingCycle === 'yearly' ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Anual <span className="ml-1 text-xs text-green-600 font-bold bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full">-20%</span>
+        </span>
+      </div>
+
       {currentSubscription && currentSubscription.status !== 'default_free' && (
         <Card className="bg-card border-primary shadow-lg">
           <CardHeader>
@@ -168,10 +181,18 @@ export default function MyPlanPage() {
             <CardHeader className="pb-4">
               <CardTitle className="text-xl">{plan.plan_name}</CardTitle>
               <CardDescription className="text-sm h-12 line-clamp-2">{plan.description}</CardDescription> {/* Altura fixa e line-clamp */}
-              <p className="text-3xl font-bold text-foreground pt-3">
-                R$ {plan.price_monthly.toFixed(2)}
-                <span className="text-sm font-normal text-muted-foreground ml-1">/mês</span>
-              </p>
+              <CardDescription className="text-sm h-12 line-clamp-2">{plan.description}</CardDescription> {/* Altura fixa e line-clamp */}
+              <div className="pt-3">
+                <p className="text-3xl font-bold text-foreground">
+                    R$ {(billingCycle === 'yearly' ? plan.price_monthly * 0.8 : plan.price_monthly).toFixed(2)}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">/mês</span>
+                </p>
+                {billingCycle === 'yearly' && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Cobrado anualmente (R$ {(plan.price_monthly * 0.8 * 12).toFixed(2)})
+                    </p>
+                )}
+              </div>
               {currentPlanId === plan.id && currentSubscription?.status === 'active' && (
                   <div className="mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground hover:bg-primary/80">
                       Plano Atual
