@@ -43,7 +43,10 @@ import {
 	RefreshCw,
 	BrainCircuit,
     Shield,
-    X
+    X,
+    Loader2,
+    CheckCircle2,
+    AlertCircle
 } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import React, {
@@ -52,8 +55,10 @@ import React, {
 	useCallback,
 	FormEvent,
 	ChangeEvent,
+    useRef,
 } from 'react'
 import { toast } from 'sonner'
+import { useDebounce } from '@/hooks/use-debounce'
 
 // Adicionado cn
 
@@ -143,7 +148,15 @@ export default function AiConfigurationPage() {
 	const [subscriptionInfo, setSubscriptionInfo] =
 		useState<SubscriptionInfo | null>(null)
 	const [selectedTemplate, setSelectedTemplate] = useState<string>('generico')
+    // Generic Templates
     const [apiTemplates, setApiTemplates] = useState<Record<string, PersonaInstruction>>({})
+    
+    // Auto-Save Logic
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const debouncedFormData = useDebounce(instructionFormData, 2000); // 2 segundos de inatividade
+    const debouncedPersonaDetails = useDebounce(personaDetails, 2000);
+    const lastSavedData = useRef<string>(""); // Para evitar salvar se não mudou
+
 
 	const fetchPersonasAndSubscription = useCallback(async () => {
 		// ... (lógica para buscar personas e info de assinatura, como antes)
@@ -301,6 +314,8 @@ export default function AiConfigurationPage() {
             ownerToolInstruction: persona.owner_tool_instruction || '',
             ownerAlertInstruction: persona.owner_alert_instruction || '',
 		})
+        
+        setSaveStatus('idle'); // Reset status on edit start
 		// Desestrutura a instrução JSON do banco para o formulário
 		// Se instruction for string (JSON antigo), tenta parsear. Se for objeto, usa direto.
 		let instructionObject: Partial<PersonaInstruction> = {}
@@ -324,33 +339,53 @@ export default function AiConfigurationPage() {
 				? instructionObject.aiName || ''
 				: '',
 		})
+		setInstructionFormData({
+			...initialInstructionFormData, // Começa com defaults para garantir todos os campos
+			...(instructionObject as EditablePersonaInstruction), // Sobrescreve com dados do DB
+			customAiName: subscriptionInfo?.canChangeAiName
+				? instructionObject.aiName || ''
+				: '',
+		})
+        
+        // Initialize lastSavedData to avoid immediate save trigger
+        const initialDataToHash = JSON.stringify({
+            details: {
+                personaDisplayName: persona.persona_name,
+                isDefault: persona.is_default,
+                ownerPhones: phones,
+                ownerToolInstruction: persona.owner_tool_instruction || '',
+                ownerAlertInstruction: persona.owner_alert_instruction || '',
+            },
+            instruction: {
+                ...initialInstructionFormData,
+                ...(instructionObject as EditablePersonaInstruction),
+                customAiName: subscriptionInfo?.canChangeAiName ? instructionObject.aiName || '' : '',
+            }
+        });
+        lastSavedData.current = initialDataToHash;
+
 		setSelectedTemplate(
 			instructionObject.businessTypeForTemplate || 'generico'
 		)
 		setShowFormDialog(true)
 	}
 
-	const handleSubmit = async (e: FormEvent) => {
-		e.preventDefault()
-		if (!personaDetails.personaDisplayName) { // Removida checagem de model
-			toast.error('Nome da persona é obrigatório.')
-			return
-		}
+    // Refactored Save Function (Replaces handleSubmit logic partially)
+    const performSave = useCallback(async (isAutoSave: boolean = false) => {
+        // Validation checks (Skip strict toast validation for auto-save to not annoy, but only if name is present)
+        if (!personaDetails.personaDisplayName) { 
+            if (!isAutoSave) toast.error('Nome da persona é obrigatório.');
+            return;
+        }
 
-		if (
-			!editingPersona &&
-			subscriptionInfo &&
-			personas.length >= subscriptionInfo.maxPersonas
-		) {
-			toast.error(
-				`Limite de ${subscriptionInfo.maxPersonas} persona(s) do plano atingido.`
-			)
-			return
-		}
+        // if (!editingPersona) return; // Only auto-save existing personas for safety? Or allow new? Allow new logic is tricky without ID.
+        // DECISION: Only auto-save if we are EDITING an existing persona. 
+        // Auto-creating on typing might spam the backend with half-empty personas.
+        if (!editingPersona && isAutoSave) return; 
 
-		setIsSubmitting(true)
+		if (isAutoSave) setSaveStatus('saving');
+        else setIsSubmitting(true);
 
-		// Monta o objeto de instrução final
 		const finalInstruction: PersonaInstruction = {
 			...instructionFormData,
 			aiName:
@@ -359,7 +394,7 @@ export default function AiConfigurationPage() {
 					? instructionFormData.customAiName.trim()
 					: 'Clara',
 		}
-		// Remove customAiName se existir, pois ele já foi incorporado em aiName
+		
 		const { customAiName, ...instructionPayloadForDB } =
 			finalInstruction as EditablePersonaInstruction & {
 				customAiName?: string
@@ -367,10 +402,10 @@ export default function AiConfigurationPage() {
 
 		const payload = {
 			persona_name: personaDetails.personaDisplayName,
-			model: 'auto', // Backend agora decide ou usa padrão
+			model: 'auto',
 			instruction: instructionPayloadForDB, 
 			is_default: personaDetails.isDefault,
-            owner_phones: personaDetails.ownerPhones, // Envia lista de donos
+            owner_phones: personaDetails.ownerPhones,
             owner_tool_instruction: personaDetails.ownerToolInstruction,
             owner_alert_instruction: personaDetails.ownerAlertInstruction,
 		}
@@ -378,22 +413,59 @@ export default function AiConfigurationPage() {
 		try {
 			if (editingPersona) {
 				await apiClient.put(`/personas/${editingPersona.id}`, payload)
-				toast.success('Persona atualizada com sucesso!')
+				if (!isAutoSave) toast.success('Persona atualizada com sucesso!')
+                else setSaveStatus('saved');
 			} else {
-				await apiClient.post('/personas', payload)
-				toast.success('Persona criada com sucesso!')
+				const res = await apiClient.post('/personas', payload)
+				if (!isAutoSave) toast.success('Persona criada com sucesso!')
+                // If we allow auto-save on new, we would need to setEditingPersona here to switch mode
+                // For now, manual save only for NEW.
 			}
-			setShowFormDialog(false)
-			resetForm()
-			fetchPersonasAndSubscription()
+            
+            // Update reference
+            lastSavedData.current = JSON.stringify({
+                details: personaDetails,
+                instruction: instructionFormData
+            });
+
+			if (!isAutoSave) {
+                setShowFormDialog(false)
+                resetForm()
+                fetchPersonasAndSubscription()
+            } else {
+                 // Refresh list silently if needed, but maybe not needed for auto-save content updates
+                 // fetchPersonasAndSubscription() // Skip to avoid jitter
+            }
+
 		} catch (error: any) {
 			logger.error('Erro ao salvar persona:', error)
-			toast.error(
-				error.response?.data?.message || 'Falha ao salvar persona.'
-			)
+			if (!isAutoSave) toast.error(error.response?.data?.message || 'Falha ao salvar persona.')
+            else setSaveStatus('error');
 		} finally {
-			setIsSubmitting(false)
+			if (!isAutoSave) setIsSubmitting(false)
 		}
+    }, [editingPersona, instructionFormData, personaDetails, subscriptionInfo, personas.length]); // Dependencies
+
+    // Effect for Auto-Save
+    useEffect(() => {
+        // Check if we have an active editing session and data has completely changed from last save
+        if (!editingPersona || !showFormDialog) return;
+
+        const currentDataHash = JSON.stringify({
+             details: debouncedPersonaDetails,
+             instruction: debouncedFormData
+        });
+
+        if (currentDataHash !== lastSavedData.current) {
+             performSave(true);
+        }
+
+    }, [debouncedFormData, debouncedPersonaDetails, performSave, editingPersona, showFormDialog]);
+
+
+	const handleSubmit = async (e: FormEvent) => {
+		e.preventDefault()
+        await performSave(false);
 	}
 
 	const handleDelete = async (personaId: string) => {
@@ -520,6 +592,26 @@ export default function AiConfigurationPage() {
 							Defina os detalhes e as instruções avançadas
 							para esta IA.
 						</DialogDescription>
+                        {/* Auto-Save Indicator */}
+                        {editingPersona && (
+                            <div className="flex items-center gap-2 text-xs font-medium ml-auto sm:ml-4">
+                                {saveStatus === 'saving' && (
+                                    <span className="text-muted-foreground flex items-center animate-pulse">
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Salvando...
+                                    </span>
+                                )}
+                                {saveStatus === 'saved' && (
+                                    <span className="text-green-600 flex items-center">
+                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Salvo
+                                    </span>
+                                )}
+                                {saveStatus === 'error' && (
+                                    <span className="text-red-500 flex items-center">
+                                        <AlertCircle className="h-3 w-3 mr-1" /> Erro ao salvar
+                                    </span>
+                                )}
+                            </div>
+                        )}
 					</DialogHeader>
 					<form
 						onSubmit={handleSubmit}
