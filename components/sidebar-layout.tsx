@@ -30,6 +30,7 @@ type Item = {
   href: string;
   icon: LucideIcon;
   type: "item";
+  external?: boolean;
 };
 
 type Sep = {
@@ -50,10 +51,11 @@ function NavItem(props: {
 }) {
   const segment = useSegment(props.basePath);
   const selected = segment === props.item.href;
+  const href = props.item.external ? props.item.href : props.basePath + props.item.href;
 
   return (
     <Link
-      href={props.basePath + props.item.href}
+      href={href}
       className={cn(
         buttonVariants({ variant: "ghost", size: "sm" }),
         selected && "bg-muted",
