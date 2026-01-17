@@ -49,6 +49,7 @@ import {
 	Wifi,
 	WifiOff,
 	RotateCcw,
+	Smartphone, // Add Smartphone icon
 } from 'lucide-react'
 // Adicionado Wifi, WifiOff
 import Image from 'next/image'
@@ -129,6 +130,11 @@ export default function WhatsAppInstancesPage() {
 	const [connectingInstances, setConnectingInstances] = useState<Set<string>>(
 		new Set()
 	)
+
+	// State for Pairing Code Mode
+	const [isPairingCodeMode, setIsPairingCodeMode] = useState(false)
+	const [pairingPhoneNumber, setPairingPhoneNumber] = useState('')
+	const [isRequestingCode, setIsRequestingCode] = useState(false)
 
 	const fetchAllData = useCallback(
 		async (showLoadingSpinner = false) => {
@@ -578,6 +584,33 @@ export default function WhatsAppInstancesPage() {
 		}
 	}
 
+	const handleRequestPairingCode = async (e: FormEvent) => {
+		e.preventDefault()
+		if (!qrDialogInstance || !pairingPhoneNumber.trim()) return
+
+		setIsRequestingCode(true)
+		try {
+			// clean phone number: remove non-numeric chars
+			const cleanedPhone = pairingPhoneNumber.replace(/\D/g, '')
+			
+			const response = await apiClient.post(
+				`/instances/${qrDialogInstance.id}/pair-code`,
+				{ phoneNumber: cleanedPhone }
+			)
+			toast.success(
+				response.data.message || 'Código de pareamento solicitado! Aguarde na tela.'
+			)
+			// The code will arrive via polling in the `qr_code` field, likely as a text string instead of base64 image.
+		} catch (error: any) {
+			logger.error('Erro ao solicitar código de pareamento:', error)
+			toast.error(
+				error.response?.data?.message || 'Erro ao solicitar código.'
+			)
+		} finally {
+			setIsRequestingCode(false)
+		}
+	}
+
 const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
     if (!status) return 'secondary';
     return instanceStatusBadgeVariantMap.get(status.toLowerCase()) || 'secondary';
@@ -1010,7 +1043,10 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 						if (!open) {
 							setQrDialogInstance(null)
 							setCurrentQrCodeValue(null)
-							setIsQrLoading(false) // Garante que o loading do QR seja resetado
+							setIsQrLoading(false)
+							// Reset Pairing Mode state
+							setIsPairingCodeMode(false)
+							setPairingPhoneNumber('')
 						}
 					}}
 				>
@@ -1033,45 +1069,110 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								conectados {'>'} Conectar um aparelho.
 							</DialogDescription>
 						</DialogHeader>
-						<div className='px-6 py-2 flex justify-center items-center min-h-[280px] md:min-h-[320px] bg-muted/30 dark:bg-muted/10 rounded-md mx-6'>
+						<div className='px-6 py-2 flex justify-center items-center min-h-[280px] md:min-h-[320px] bg-muted/30 dark:bg-muted/10 rounded-md mx-6 flex-col'>
 							{isQrLoading && ( // Se isQrLoading for true
 								<div className='flex flex-col items-center gap-2 text-muted-foreground'>
 									<RefreshCw className='h-8 w-8 animate-spin' />
-									<span>Aguardando QR Code...</span>
+									<span>Aguardando Servidor...</span>
 								</div>
 							)}
-							{!isQrLoading &&
-								currentQrCodeValue && ( // Se não estiver carregando E tiver um QR
-									<Image
-										src={
-											currentQrCodeValue.startsWith(
-												'data:image'
-											)
-												? currentQrCodeValue
-												: `data:image/png;base64,${currentQrCodeValue}`
-										}
-										alt='QR Code do WhatsApp'
-										width={280}
-										height={280}
-										unoptimized
-										className='rounded-md border bg-background p-1 shadow-md'
-										onError={() => {
-											/* ... */
-										}}
-									/>
+
+							{/* PHONE NUMBER INPUT MODE */}
+							{!isQrLoading && isPairingCodeMode && !currentQrCodeValue && (
+								<div className="w-full max-w-[260px] space-y-4">
+									<div className="text-center space-y-2">
+										<p className="font-medium">Conectar com Código</p>
+										<p className="text-xs text-muted-foreground">
+											Insira seu número de telefone (com DDD) para receber um código de pareamento no WhatsApp.
+										</p>
+									</div>
+									<form onSubmit={handleRequestPairingCode} className="space-y-3">
+										<div>
+											<Label htmlFor="pairing-phone" className="sr-only">Telefone</Label>
+											<Input
+												id="pairing-phone"
+												placeholder="Ex: 11999998888"
+												value={pairingPhoneNumber}
+												onChange={(e) => setPairingPhoneNumber(e.target.value)}
+												disabled={isRequestingCode}
+												className="text-center"
+											/>
+										</div>
+										<Button type="submit" className="w-full" disabled={isRequestingCode || pairingPhoneNumber.length < 10}>
+											{isRequestingCode ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Smartphone className="mr-2 h-4 w-4" />}
+											Enviar Código
+										</Button>
+									</form>
+									<p className="text-[10px] text-center text-muted-foreground pt-2">
+										Você receberá um código de 8 dígitos. Digite-o no seu WhatsApp em "Aparelhos Conectados" {'>'} "Conectar com número de telefone".
+									</p>
+								</div>
+							)}
+
+							{/* QR CODE or TEXT CODE DISPLAY */}
+							{!isQrLoading && !isPairingCodeMode &&
+								currentQrCodeValue && ( // Se não estiver carregando E tiver um QR/Código
+									currentQrCodeValue.length < 50 && !currentQrCodeValue.startsWith('data:') ? (
+										// LOGIC FOR TEXT-BASED PAIRING CODE (Short string)
+										<div className="flex flex-col items-center gap-4 text-center animate-in fade-in zoom-in duration-300">
+											<div className="space-y-1">
+												<p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Código de Pareamento</p>
+												<div className="text-4xl font-mono font-bold tracking-widest bg-background border-2 border-primary/20 px-6 py-3 rounded-lg shadow-sm select-all">
+													{currentQrCodeValue.toUpperCase()}
+												</div>
+											</div>
+											<p className="text-xs text-muted-foreground max-w-[200px]">
+												Digite este código no seu WhatsApp para conectar.
+											</p>
+										</div>
+									) : (
+										// LOGIC FOR TRADITIONAL QR CODE (Base64 Image)
+										<Image
+											src={
+												currentQrCodeValue.startsWith(
+													'data:image'
+												)
+													? currentQrCodeValue
+													: `data:image/png;base64,${currentQrCodeValue}`
+											}
+											alt='QR Code do WhatsApp'
+											width={280}
+											height={280}
+											unoptimized
+											className='rounded-md border bg-background p-1 shadow-md'
+											onError={() => {
+												/* ... */
+											}}
+										/>
+									)
 								)}
-							{/* Se não estiver carregando, NÃO tiver QR, E o status for apropriado */}
+							
+							{/* SWITCH MODES BUTTON (Only shows if waiting for QR/Code logic) */}
+							{!isQrLoading && !currentQrCodeValue && !isPairingCodeMode && (
+								<div className="mt-4">
+										<Button 
+											variant="ghost" 
+											size="sm" 
+											onClick={() => setIsPairingCodeMode(true)}
+											className="text-xs text-primary hover:text-primary/80"
+										>
+											Conectar com número de telefone
+										</Button>
+								</div>
+							)}
+
+							{/* WAITING FOR GENERATION (Default state if no QR yet) */}
 							{!isQrLoading &&
 								!currentQrCodeValue &&
+								!isPairingCodeMode && // Don't show this if in pairing mode
 								qrDialogInstance &&
 								(qrDialogInstance.status === 'needs_qr' ||
 									qrDialogInstance.status === 'connecting' ||
 									qrDialogInstance.status ===
 										'pending_creation') && (
-									<div className='text-center space-y-3'>
+									<div className='text-center space-y-3 mt-4'>
 										<p className='text-muted-foreground'>
-											Aguardando geração do QR Code pelo
-											servidor...
+											Aguardando geração do QR Code...
 										</p>
 										<p className='text-xs text-muted-foreground'>
 											(Isso pode levar alguns segundos
@@ -1083,12 +1184,14 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 											onClick={() => fetchAllData(true)}
 										>
 											<RefreshCw className='mr-2 h-4 w-4' />{' '}
-											Forçar Atualização da Lista
+											Forçar Atualização
 										</Button>
 									</div>
 								)}
-							{/* Se não estiver carregando E o status NÃO for de espera por QR */}
+
+							{/* GENERIC MESSAGE IF STATUS IS WEIRD */}
 							{!isQrLoading &&
+								!isPairingCodeMode &&
 								qrDialogInstance &&
 								qrDialogInstance.status !== 'needs_qr' &&
 								qrDialogInstance.status !== 'connecting' &&
@@ -1099,7 +1202,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 										<span className='font-semibold'>
 											{qrDialogInstance.instance_name}
 										</span>
-										não está aguardando QR Code (Status:{' '}
+										não está aguardando conexão (Status:{' '}
 										{qrDialogInstance.status
 											?.replace('_', ' ')
 											.toUpperCase()}
