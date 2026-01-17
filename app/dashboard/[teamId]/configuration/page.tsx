@@ -858,27 +858,10 @@ export default function AiConfigurationPage() {
                                     </h3>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* OPÇÃO 1: Contato Passivo */}
+                                        {/* OPÇÃO 1: Escalada Ativa (Prioridade) */}
                                         <div className="space-y-2">
-                                            <Label htmlFor='humanHandoffContact' className="text-blue-600 font-medium">
-                                                1. Contato Passivo (Info)
-                                            </Label>
-                                            <p className="text-[0.8rem] text-muted-foreground h-10">
-                                                O que dizer quando o usuário pede o telefone ou contato, sem urgência.
-                                            </p>
-                                            <Input
-                                                id='humanHandoffContact'
-                                                name='humanHandoffContact'
-                                                value={instructionFormData.humanHandoffContact}
-                                                onChange={(e) => handleInstructionInputChange(e)}
-                                                placeholder='Ex: Ligue para (XX) XXXXX-XXXX em horário comercial.'
-                                            />
-                                        </div>
-
-                                        {/* OPÇÃO 2: Escalada Ativa */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor='ownerToolInstruction' className="text-red-600 font-medium">
-                                                2. Escalada Ativa (Urgente)
+                                            <Label htmlFor='ownerToolInstruction' className="text-red-600 font-medium flex items-center gap-1">
+                                                1. Escalada Ativa (Inteligente) <Badge variant="outline" className="text-[0.6rem] border-red-200 text-red-500">Prioridade</Badge>
                                             </Label>
                                             <p className="text-[0.8rem] text-muted-foreground h-10">
                                                 Condição para a Clara <b>interromper</b> e chamar você via WhatsApp.
@@ -890,6 +873,23 @@ export default function AiConfigurationPage() {
                                                 rows={2}
                                                 placeholder="Ex: Se o cliente estiver muito irritado, pedir urgência médica ou ameaçar processo."
                                                 className="resize-none"
+                                            />
+                                        </div>
+
+                                        {/* OPÇÃO 2: Contato Passivo */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor='humanHandoffContact' className="text-blue-600 font-medium">
+                                                2. Contato Passivo (Info)
+                                            </Label>
+                                            <p className="text-[0.8rem] text-muted-foreground h-10">
+                                                O que dizer se o usuário pedir contato, mas o caso <b>não for urgente</b>.
+                                            </p>
+                                            <Input
+                                                id='humanHandoffContact'
+                                                name='humanHandoffContact'
+                                                value={instructionFormData.humanHandoffContact}
+                                                onChange={(e) => handleInstructionInputChange(e)}
+                                                placeholder='Ex: Ligue para (XX) XXXXX-XXXX em horário comercial.'
                                             />
                                         </div>
                                     </div>
