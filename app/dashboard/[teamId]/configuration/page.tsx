@@ -1,5 +1,6 @@
 'use client'
 
+import { isValidPhone, formatPhone } from '@/lib/validation';
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -247,22 +248,17 @@ export default function AiConfigurationPage() {
 
     // Handlers para Owner Phones
     const handleAddOwnerPhone = () => {
-        if (!newOwnerPhone.trim()) return;
-        // Limpeza básica: manter apenas números
-        const cleanPhone = newOwnerPhone.replace(/\D/g, '');
-        if (cleanPhone.length < 10) {
-            toast.error("Número de telefone inválido (muito curto).");
-            return;
+        if (newOwnerPhone && !personaDetails.ownerPhones.includes(newOwnerPhone)) {
+             if (!isValidPhone(newOwnerPhone)) {
+                toast.error("Número de telefone inválido. Use o formato com DDD: 11999999999");
+                return;
+            }
+            setPersonaDetails({
+                ...personaDetails,
+                ownerPhones: [...personaDetails.ownerPhones, newOwnerPhone]
+            });
+            setNewOwnerPhone('');
         }
-        if (personaDetails.ownerPhones.includes(cleanPhone)) {
-             toast.error("Este número já está na lista.");
-             return;
-        }
-        setPersonaDetails(prev => ({
-            ...prev,
-            ownerPhones: [...prev.ownerPhones, cleanPhone]
-        }));
-        setNewOwnerPhone('');
     };
 
     const handleRemoveOwnerPhone = (phoneToRemove: string) => {
@@ -594,7 +590,7 @@ export default function AiConfigurationPage() {
                                     <Input 
                                         placeholder="Ex: 5511999999999 (apenas números)" 
                                         value={newOwnerPhone}
-                                        onChange={(e) => setNewOwnerPhone(e.target.value)}
+                                        onChange={(e) => setNewOwnerPhone(formatPhone(e.target.value))}
                                         className="flex-1"
                                     />
                                     <Button type="button" onClick={handleAddOwnerPhone} variant="secondary">Adicionar</Button>

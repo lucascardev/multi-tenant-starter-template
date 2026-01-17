@@ -11,7 +11,8 @@ import { useRouter, usePathname } from "next/navigation"; // usePathname pode se
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { type OnboardingClientMetadata, type FullClientMetadata } from "../../types/onboarding"; // Assumindo que você moveu para cá
+import { type OnboardingClientMetadata, type FullClientMetadata } from "../../types/onboarding";
+import { formatCNPJ, formatCPF, formatPhone, isValidCNPJ, isValidCPF, isValidPhone } from "@/lib/validation";
 
 // Logger
 const logger = {
@@ -33,6 +34,21 @@ export default function OnboardingPage() {
   const [identifierValue, setIdentifierValue] = React.useState('');
   const [businessTypeValue, setBusinessTypeValue] = React.useState('');
   const [phoneValue, setPhoneValue] = React.useState('');
+
+  // Handlers for Masking
+  const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      if (accountType === 'business') {
+          setIdentifierValue(formatCNPJ(raw));
+      } else {
+          setIdentifierValue(formatCPF(raw));
+      }
+      setError(null); // Clear error on edit
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setPhoneValue(formatPhone(e.target.value));
+  };
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -91,6 +107,28 @@ export default function OnboardingPage() {
       setIsSubmitting(false);
       return;
     }
+    
+    // Strict Validation
+    if (accountType === 'business') {
+        if (!isValidCNPJ(identifierValue)) {
+            setError("CNPJ inválido. Verifique o número digitado.");
+            setIsSubmitting(false);
+            return;
+        }
+    } else {
+        if (!isValidCPF(identifierValue)) {
+            setError("CPF inválido. Verifique o número digitado.");
+            setIsSubmitting(false);
+            return;
+        }
+    }
+
+    if (phoneValue && !isValidPhone(phoneValue)) {
+        setError("Telefone inválido. Formato esperado: (XX) XXXXX-XXXX");
+        setIsSubmitting(false);
+        return;
+    }
+
     if (accountType === "business" && !businessTypeValue.trim()) {
         setError("O tipo de negócio é obrigatório para empresas.");
         setIsSubmitting(false);
@@ -278,9 +316,16 @@ export default function OnboardingPage() {
                   id="identifierValue"
                   placeholder={accountType === "business" ? "00.000.000/0001-00" : "000.000.000-00"}
                   value={identifierValue}
-                  onChange={(e) => setIdentifierValue(e.target.value)}
+                  onChange={handleIdentifierChange}
+                  maxLength={accountType === 'business' ? 18 : 14}
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1 text-right">
+                    {accountType === "business" 
+                        ? (isValidCNPJ(identifierValue) ? <span className="text-green-600 font-medium">CNPJ Válido</span> : identifierValue.length > 0 ? <span className="text-amber-600 font-medium">Formato Inválido</span> : "")
+                        : (isValidCPF(identifierValue) ? <span className="text-green-600 font-medium">CPF Válido</span> : identifierValue.length > 0 ? <span className="text-amber-600 font-medium">Formato Inválido</span> : "")
+                    }
+                </p>
               </div>
 
               {accountType === "business" && (
@@ -313,7 +358,8 @@ export default function OnboardingPage() {
                   type="tel"
                   placeholder="Ex: 11912345678"
                   value={phoneValue}
-                  onChange={(e) => setPhoneValue(e.target.value)}
+                  onChange={handlePhoneChange}
+                  maxLength={15}
                 />
               </div>
 
