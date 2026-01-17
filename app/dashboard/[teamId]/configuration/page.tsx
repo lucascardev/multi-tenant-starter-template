@@ -511,7 +511,7 @@ export default function AiConfigurationPage() {
 					if (!isOpen) resetForm()
 				}}
 			>
-				<DialogContent className='max-w-5xl'>
+				<DialogContent className='max-w-[90vw] w-full'>
 					{' '}
 					{/* Aumentado para mais campos */}
 					<DialogHeader>
