@@ -130,6 +130,8 @@ export default function AiConfigurationPage() {
 		// model: 'gemini-2.0-flash', // REMOVIDO: Seleção automática no backend
 		isDefault: false,
         ownerPhones: [] as string[], // Estado para lista de telefones de donos
+        ownerToolInstruction: '',
+        ownerAlertInstruction: '',
 	})
 
     const [newOwnerPhone, setNewOwnerPhone] = useState('') // Input temporário
@@ -261,8 +263,7 @@ export default function AiConfigurationPage() {
 		setPersonaDetails({
 			personaDisplayName: '',
 			// model: 'gemini-2.0-flash',
-			isDefault: false,
-			isDefault: false,
+			isDefault: false, // Reset explicit
             ownerPhones: [],
             ownerToolInstruction: '',
             ownerAlertInstruction: '',
@@ -357,7 +358,6 @@ export default function AiConfigurationPage() {
 			persona_name: personaDetails.personaDisplayName,
 			model: 'auto', // Backend agora decide ou usa padrão
 			instruction: instructionPayloadForDB, 
-			is_default: personaDetails.isDefault,
 			is_default: personaDetails.isDefault,
             owner_phones: personaDetails.ownerPhones, // Envia lista de donos
             owner_tool_instruction: personaDetails.ownerToolInstruction,
