@@ -104,8 +104,6 @@ const initialInstructionFormData: EditablePersonaInstruction = {
 	],
 	formattingGuidelines: 'Use parágrafos curtos. Emojis com moderação.',
 	additionalContext: '',
-    ownerToolInstruction: '', // Adicionado para binding
-    ownerAlertInstruction: '', // Adicionado para binding
 }
 interface SubscriptionInfo {
 	maxPersonas: number
