@@ -414,7 +414,13 @@ export default function AiConfigurationPage() {
 			if (editingPersona) {
 				await apiClient.put(`/personas/${editingPersona.id}`, payload)
 				if (!isAutoSave) toast.success('Persona atualizada com sucesso!')
-                else setSaveStatus('saved');
+                else {
+                    setSaveStatus('saved');
+                    // Optimistic update for auto-save to reflect changes in the list without refetching
+                    setPersonas(prev => prev.map(p => 
+                        p.id === editingPersona.id ? { ...p, ...payload, id: p.id, instruction: payload.instruction as PersonaInstruction } : p
+                    ));
+                }
 			} else {
 				const res = await apiClient.post('/personas', payload)
 				if (!isAutoSave) toast.success('Persona criada com sucesso!')
