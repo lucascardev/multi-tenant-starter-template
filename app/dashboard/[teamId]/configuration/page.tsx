@@ -952,20 +952,20 @@ export default function AiConfigurationPage() {
                                     </h3>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* OPÇÃO 1: Escalada Ativa (Prioridade) */}
+                                        {/* OPÇÃO 1: Escalada e Aprovação (Ferramentas Ativas) */}
                                         <div className="space-y-2">
                                             <Label htmlFor='ownerToolInstruction' className="text-red-600 font-medium flex items-center gap-1">
-                                                1. Escalada Ativa (Inteligente) <Badge variant="outline" className="text-[0.6rem] border-red-200 text-red-500">Prioridade</Badge>
+                                                1. Aprovações e Escalada (Ferramentas) <Badge variant="outline" className="text-[0.6rem] border-red-200 text-red-500">Prioridade</Badge>
                                             </Label>
                                             <p className="text-[0.8rem] text-muted-foreground h-10">
-                                                Condição para a Clara <b>interromper</b> e chamar você via WhatsApp.
+                                                Defina quando a Clara deve <b>pausar para pedir sua aprovação</b> (ex: descontos) ou <b>chamar intervenção urgente</b> (ex: conflitos).
                                             </p>
                                             <Textarea
                                                 id='ownerToolInstruction'
                                                 value={personaDetails.ownerToolInstruction}
                                                 onChange={(e) => setPersonaDetails(p => ({ ...p, ownerToolInstruction: e.target.value }))}
-                                                rows={2}
-                                                placeholder="Ex: Se o cliente estiver muito irritado, pedir urgência médica ou ameaçar processo."
+                                                rows={3}
+                                                placeholder="Ex: Se pedir desconto > 20%, solicite aprovação. Se o cliente estiver muito irritado e pedir gerente, chame ajuda humana urgente."
                                                 className="resize-none"
                                             />
                                         </div>
@@ -973,17 +973,19 @@ export default function AiConfigurationPage() {
                                         {/* OPÇÃO 2: Contato Passivo */}
                                         <div className="space-y-2">
                                             <Label htmlFor='humanHandoffContact' className="text-blue-600 font-medium">
-                                                2. Contato Passivo (Info)
+                                                2. Contato Passivo (Informativo)
                                             </Label>
                                             <p className="text-[0.8rem] text-muted-foreground h-10">
-                                                O que dizer se o usuário pedir contato, mas o caso <b>não for urgente</b>.
+                                                O que responder se o usuário pedir contato, mas o caso <b>não for crítico</b> e nem precisar de aprovação imediata.
                                             </p>
-                                            <Input
+                                            <Textarea
                                                 id='humanHandoffContact'
                                                 name='humanHandoffContact'
                                                 value={instructionFormData.humanHandoffContact}
                                                 onChange={(e) => handleInstructionInputChange(e)}
-                                                placeholder='Ex: Ligue para (XX) XXXXX-XXXX em horário comercial.'
+                                                rows={3}
+                                                placeholder='Ex: Para outros assuntos, ligue para (XX) XXXXX-XXXX em horário comercial ou envie e-mail.'
+                                                className="resize-none"
                                             />
                                         </div>
                                     </div>
