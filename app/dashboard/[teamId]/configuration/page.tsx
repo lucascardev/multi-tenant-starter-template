@@ -621,45 +621,7 @@ export default function AiConfigurationPage() {
                             </CardContent>
                         </Card>
 
-						{/* PROTOCOLOS DE ESCALABILIDADE & ALERTAS (NOVO) */}
-                        <Card>
-							<CardHeader>
-								<CardTitle className='text-lg flex items-center gap-2'>
-									<Shield className="h-5 w-5 text-red-500" /> Protocolos de Segurança & Alertas
-								</CardTitle>
-                                <DialogDescription>
-                                    Defina quando a Clara deve solicitar sua interveção.
-                                </DialogDescription>
-							</CardHeader>
-							<CardContent className='space-y-4'>
-                                <div>
-                                    <Label htmlFor='ownerToolInstruction'>
-                                        Quando solicitar ajuda humana? (Escalabilidade)
-                                    </Label>
-                                    <Textarea
-                                        id='ownerToolInstruction'
-                                        value={personaDetails.ownerToolInstruction}
-                                        onChange={(e) => setPersonaDetails(p => ({ ...p, ownerToolInstruction: e.target.value }))}
-                                        rows={3}
-                                        placeholder="Ex: Apenas me chame se o cliente insistir em um horário indisponível ou pedir para falar com o gerente."
-                                    />
-                                    <p className="text-xs text-muted-foreground mt-1">Clara irá pausar a conversa e enviar uma notificação para os donos cadastrados.</p>
-                                </div>
-                                <div>
-                                    <Label htmlFor='ownerAlertInstruction'>
-                                        Alertas Silenciosos (Monitoramento)
-                                    </Label>
-                                    <Textarea
-                                        id='ownerAlertInstruction'
-                                        value={personaDetails.ownerAlertInstruction}
-                                        onChange={(e) => setPersonaDetails(p => ({ ...p, ownerAlertInstruction: e.target.value }))}
-                                        rows={3}
-                                        placeholder="Ex: Me avise imediatamente se o cliente usar termos agressivos, falar em processo ou cancelar o plano."
-                                    />
-                                    <p className="text-xs text-muted-foreground mt-1">Clara continuará a conversa normalmente, mas enviará um alerta para você.</p>
-                                </div>
-                            </CardContent>
-                        </Card>
+						{/* PROTOCOLOS DE SEGURANÇA MOVIDOS PARA DENTRO DE INSTRUÇÕES DETALHADAS */}
 
 						{/* Seleção de Template */}
 						<Card>
@@ -889,22 +851,66 @@ export default function AiConfigurationPage() {
 										placeholder='Ex: problema, cancelar, falar com gerente'
 									/>
 								</div>
-								<div>
-									<Label htmlFor='humanHandoffContact'>
-										Contato para Encaminhamento Humano
-									</Label>
-									<Input
-										id='humanHandoffContact'
-										name='humanHandoffContact'
-										value={
-											instructionFormData.humanHandoffContact
-										}
-										onChange={(e) =>
-											handleInstructionInputChange(e)
-										}
-										placeholder='Ex: WhatsApp (XX) XXXXX-XXXX ou telefone YYYY-YYYY'
-									/>
-								</div>
+								{/* SEÇÃO UNIFICADA DE HANDOFF */}
+                                <div className="border p-4 rounded-md space-y-4 bg-muted/20 mt-4">
+                                    <h3 className="font-semibold flex items-center gap-2 text-primary">
+                                       <Shield className="h-4 w-4" /> Protocolo de Atendimento Humano
+                                    </h3>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* OPÇÃO 1: Contato Passivo */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor='humanHandoffContact' className="text-blue-600 font-medium">
+                                                1. Contato Passivo (Info)
+                                            </Label>
+                                            <p className="text-[0.8rem] text-muted-foreground h-10">
+                                                O que dizer quando o usuário pede o telefone ou contato, sem urgência.
+                                            </p>
+                                            <Input
+                                                id='humanHandoffContact'
+                                                name='humanHandoffContact'
+                                                value={instructionFormData.humanHandoffContact}
+                                                onChange={(e) => handleInstructionInputChange(e)}
+                                                placeholder='Ex: Ligue para (XX) XXXXX-XXXX em horário comercial.'
+                                            />
+                                        </div>
+
+                                        {/* OPÇÃO 2: Escalada Ativa */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor='ownerToolInstruction' className="text-red-600 font-medium">
+                                                2. Escalada Ativa (Urgente)
+                                            </Label>
+                                            <p className="text-[0.8rem] text-muted-foreground h-10">
+                                                Condição para a Clara <b>interromper</b> e chamar você via WhatsApp.
+                                            </p>
+                                            <Textarea
+                                                id='ownerToolInstruction'
+                                                value={personaDetails.ownerToolInstruction}
+                                                onChange={(e) => setPersonaDetails(p => ({ ...p, ownerToolInstruction: e.target.value }))}
+                                                rows={2}
+                                                placeholder="Ex: Se o cliente estiver muito irritado, pedir urgência médica ou ameaçar processo."
+                                                className="resize-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* ALERTA SILENCIOSO */}
+                                    <div className="pt-2 border-t border-dashed border-gray-300">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Label htmlFor='ownerAlertInstruction' className="font-medium">
+                                                Monitoramento Silencioso (Opcional)
+                                            </Label>
+                                            <span className="text-[0.7rem] bg-gray-200 px-2 py-0.5 rounded text-gray-600">Invisível ao cliente</span>
+                                        </div>
+                                        <Textarea
+                                            id='ownerAlertInstruction'
+                                            value={personaDetails.ownerAlertInstruction}
+                                            onChange={(e) => setPersonaDetails(p => ({ ...p, ownerAlertInstruction: e.target.value }))}
+                                            rows={2}
+                                            placeholder="Ex: Me notifique se o assunto for 'Cancelamento' ou 'Reembolso', mas continue o atendimento."
+                                        />
+                                    </div>
+                                </div>
 								{/* ... Adicionar todos os campos de instructionFormData como Inputs/Textareas ... */}
 								{/* Exemplo para salesFunnelStages (mais complexo, pode precisar de um componente dedicado) */}
 
