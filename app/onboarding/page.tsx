@@ -5,6 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useUser, type Team } from "@stackframe/stack"; // Importe Team se for usar o tipo
 import { useRouter, usePathname } from "next/navigation"; // usePathname pode ser útil
@@ -34,6 +35,7 @@ export default function OnboardingPage() {
   const [identifierValue, setIdentifierValue] = React.useState('');
   const [businessTypeValue, setBusinessTypeValue] = React.useState('');
   const [phoneValue, setPhoneValue] = React.useState('');
+  const [isAgreed, setIsAgreed] = React.useState(false); // Agreement State
 
   // Handlers for Masking
   const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,8 +366,27 @@ export default function OnboardingPage() {
               </div>
 
               <p className="text-xs text-muted-foreground pt-2 text-center">
-                Fuso horário que usaremos: {Intl.DateTimeFormat().resolvedOptions().timeZone || "Não detectado (usaremos padrão)"}
+                 Fuso horário que usaremos: {Intl.DateTimeFormat().resolvedOptions().timeZone || "Não detectado (usaremos padrão)"}
               </p>
+
+              <div className="flex items-start space-x-2 py-2">
+                <Checkbox 
+                    id="terms" 
+                    checked={isAgreed} 
+                    onCheckedChange={(c: boolean | 'indeterminate') => setIsAgreed(c === true)} 
+                />
+                <div className="grid gap-1.5 leading-none">
+                    <Label
+                        htmlFor="terms"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                        Li e concordo com os <a href="/terms" target="_blank" className="text-primary hover:underline">Termos de Uso (Contrato SaaS)</a> e <a href="/privacy" target="_blank" className="text-primary hover:underline">Política de Privacidade</a>.
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                        Ao clicar em continuar, você aceita o licenciamento do software Clara.
+                    </p>
+                </div>
+              </div>
 
               <Button
                 type="submit"
