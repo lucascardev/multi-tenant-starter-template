@@ -142,17 +142,29 @@ export default function AiConfigurationPage() {
 	const [subscriptionInfo, setSubscriptionInfo] =
 		useState<SubscriptionInfo | null>(null)
 	const [selectedTemplate, setSelectedTemplate] = useState<string>('generico')
+    const [apiTemplates, setApiTemplates] = useState<Record<string, PersonaInstruction>>({})
 
 	const fetchPersonasAndSubscription = useCallback(async () => {
 		// ... (lógica para buscar personas e info de assinatura, como antes)
 		if (!user || !team) return
 		setIsLoading(true)
 		try {
-			const [personasRes, subInfoRes] = await Promise.all([
+			const [personasRes, subInfoRes, templatesRes] = await Promise.all([
 				apiClient.get('/personas'),
-				apiClient.get('/subscriptions/current'), // Endpoint que retorna o plano atual
+				apiClient.get('/subscriptions/current'),
+                apiClient.get('/personas/templates'),
 			])
 			setPersonas(personasRes.data.personas || [])
+            
+            // Process Templates
+            if (templatesRes.data.templates && Array.isArray(templatesRes.data.templates)) {
+                const templatesMap: Record<string, PersonaInstruction> = {};
+                templatesRes.data.templates.forEach((t: any) => {
+                    templatesMap[t.id] = t.instruction;
+                });
+                setApiTemplates(templatesMap);
+            }
+
 			const subData = subInfoRes.data
 			setSubscriptionInfo({
 				maxPersonas: subData.max_personas_count || 1,
@@ -162,6 +174,7 @@ export default function AiConfigurationPage() {
 			})
 		} catch (error) {
 			/* ... */
+            console.error("Erro ao carregar dados:", error);
 		} finally {
 			setIsLoading(false)
 		}
@@ -173,7 +186,9 @@ export default function AiConfigurationPage() {
 
 	const handleTemplateChange = (templateKey: string) => {
 		setSelectedTemplate(templateKey)
-		const template = personaTemplates[templateKey]
+		// Usa apiTemplates em vez do hardcoded personaTemplates
+        // Se a API falhar, pode cair no fallback (personaTemplates) ou vazio
+        const template = apiTemplates[templateKey] || personaTemplates[templateKey]
 		if (template) {
 			setInstructionFormData((prev) => ({
 				...initialInstructionFormData, // Reseta para o base para não acumular de templates diferentes
@@ -668,28 +683,28 @@ export default function AiConfigurationPage() {
 										<SelectValue placeholder='Selecione um template' />
 									</SelectTrigger>
 									<SelectContent>
-										{Object.entries(
-											personaTemplates
-										).map(([key, template]) => (
-											<SelectItem
-												key={key}
-												value={key}
-											>
-												{template.aiName
-													? `${
-															template.aiName
-													  } para ${
-															key
-																.charAt(0)
-																.toUpperCase() +
-															key.slice(1)
-													  }`
-													: key
-															.charAt(0)
-															.toUpperCase() +
-													  key.slice(1)}
-											</SelectItem>
-										))}
+										{Object.keys(apiTemplates).length > 0 ? (
+                                            Object.entries(apiTemplates).map(([key, template]) => (
+                                                <SelectItem key={key} value={key}>
+                                                    {/* Tenta usar o nome formatado da API se disponível (mas aqui temos só a instrução)
+                                                        Vamos formatar a chave mesmo */}
+                                                    {key === 'DENTIST' ? 'Clínica Odontológica' :
+                                                     key === 'GYM' ? 'Academia' :
+                                                     key === 'RESTAURANT' ? 'Restaurante' :
+                                                     key === 'RETAIL' ? 'Varejo' :
+                                                     key.charAt(0).toUpperCase() + key.slice(1).toLowerCase().replace(/_/g, ' ')}
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            /* Fallback para hardcoded se API falhar */
+                                            Object.entries(personaTemplates).map(([key, template]) => (
+                                                <SelectItem key={key} value={key}>
+                                                    {template.aiName
+                                                        ? `${template.aiName} para ${key.charAt(0).toUpperCase() + key.slice(1)}`
+                                                        : key.charAt(0).toUpperCase() + key.slice(1)}
+                                                </SelectItem>
+                                            ))
+                                        )}
 									</SelectContent>
 								</Select>
 							</CardContent>
