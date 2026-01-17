@@ -66,6 +66,8 @@ interface PersonaFromAPI {
 	is_default: boolean
 	is_online: boolean // Este campo vem da sua interface Persona
     owner_phones?: string[] | any // Lista de telefones com acesso de dono
+    owner_tool_instruction?: string | null // Instruções para escalabilidade
+    owner_alert_instruction?: string | null // Instruções para alertas silenciosos
 }
 
 // Estado do formulário agora reflete a estrutura PersonaInstruction
@@ -102,6 +104,8 @@ const initialInstructionFormData: EditablePersonaInstruction = {
 	],
 	formattingGuidelines: 'Use parágrafos curtos. Emojis com moderação.',
 	additionalContext: '',
+    ownerToolInstruction: '', // Adicionado para binding
+    ownerAlertInstruction: '', // Adicionado para binding
 }
 interface SubscriptionInfo {
 	maxPersonas: number
@@ -260,7 +264,10 @@ export default function AiConfigurationPage() {
 			personaDisplayName: '',
 			// model: 'gemini-2.0-flash',
 			isDefault: false,
+			isDefault: false,
             ownerPhones: [],
+            ownerToolInstruction: '',
+            ownerAlertInstruction: '',
 		})
         setNewOwnerPhone('');
 		setInstructionFormData(initialInstructionFormData)
@@ -281,6 +288,8 @@ export default function AiConfigurationPage() {
 			// model: persona.model,
 			isDefault: persona.is_default,
             ownerPhones: phones,
+            ownerToolInstruction: persona.owner_tool_instruction || '',
+            ownerAlertInstruction: persona.owner_alert_instruction || '',
 		})
 		// Desestrutura a instrução JSON do banco para o formulário
 		// Se instruction for string (JSON antigo), tenta parsear. Se for objeto, usa direto.
@@ -351,7 +360,10 @@ export default function AiConfigurationPage() {
 			model: 'auto', // Backend agora decide ou usa padrão
 			instruction: instructionPayloadForDB, 
 			is_default: personaDetails.isDefault,
+			is_default: personaDetails.isDefault,
             owner_phones: personaDetails.ownerPhones, // Envia lista de donos
+            owner_tool_instruction: personaDetails.ownerToolInstruction,
+            owner_alert_instruction: personaDetails.ownerAlertInstruction,
 		}
 
 		try {
@@ -592,6 +604,46 @@ export default function AiConfigurationPage() {
                                             </Button>
                                         </Badge>
                                     ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+						{/* PROTOCOLOS DE ESCALABILIDADE & ALERTAS (NOVO) */}
+                        <Card>
+							<CardHeader>
+								<CardTitle className='text-lg flex items-center gap-2'>
+									<Shield className="h-5 w-5 text-red-500" /> Protocolos de Segurança & Alertas
+								</CardTitle>
+                                <DialogDescription>
+                                    Defina quando a Clara deve solicitar sua interveção.
+                                </DialogDescription>
+							</CardHeader>
+							<CardContent className='space-y-4'>
+                                <div>
+                                    <Label htmlFor='ownerToolInstruction'>
+                                        Quando solicitar ajuda humana? (Escalabilidade)
+                                    </Label>
+                                    <Textarea
+                                        id='ownerToolInstruction'
+                                        value={personaDetails.ownerToolInstruction}
+                                        onChange={(e) => setPersonaDetails(p => ({ ...p, ownerToolInstruction: e.target.value }))}
+                                        rows={3}
+                                        placeholder="Ex: Apenas me chame se o cliente insistir em um horário indisponível ou pedir para falar com o gerente."
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">Clara irá pausar a conversa e enviar uma notificação para os donos cadastrados.</p>
+                                </div>
+                                <div>
+                                    <Label htmlFor='ownerAlertInstruction'>
+                                        Alertas Silenciosos (Monitoramento)
+                                    </Label>
+                                    <Textarea
+                                        id='ownerAlertInstruction'
+                                        value={personaDetails.ownerAlertInstruction}
+                                        onChange={(e) => setPersonaDetails(p => ({ ...p, ownerAlertInstruction: e.target.value }))}
+                                        rows={3}
+                                        placeholder="Ex: Me avise imediatamente se o cliente usar termos agressivos, falar em processo ou cancelar o plano."
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">Clara continuará a conversa normalmente, mas enviará um alerta para você.</p>
                                 </div>
                             </CardContent>
                         </Card>
