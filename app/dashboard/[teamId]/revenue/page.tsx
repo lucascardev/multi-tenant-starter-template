@@ -3,7 +3,7 @@
 import React from 'react';
 import { useUser } from '@stackframe/stack';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import ConstructionPage from '@/components/construction';
 
 export default function RevenuePage() {
   const user = useUser();
@@ -16,22 +16,13 @@ export default function RevenuePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <h1 className="text-3xl font-bold text-foreground">Faturas</h1>
-      <p className="text-muted-foreground">
-        Visualize seu histórico de faturas e pagamentos.
-      </p>
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Faturas</CardTitle>
-          <CardDescription>
-            A integração com o sistema de faturamento (ex: Stripe) será implementada aqui.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Nenhuma fatura para exibir no momento.</p>
-          {/* TODO: Listar faturas da API do sistema de pagamento */}
-        </CardContent>
-      </Card>
+        <h1 className="text-3xl font-bold text-foreground">Faturas</h1>
+        <div className="border rounded-lg bg-card">
+            <ConstructionPage 
+                title="Gestão Financeira em Breve" 
+                message="Em breve você poderá visualizar suas faturas e gerenciar seus pagamentos (Integração Stripe) diretamente por aqui."
+            />
+        </div>
     </div>
   );
 }

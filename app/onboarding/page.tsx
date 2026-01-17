@@ -1,19 +1,19 @@
-// app/onboarding/page.tsx
 "use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useUser, type Team } from "@stackframe/stack"; // Importe Team se for usar o tipo
-import { useRouter, usePathname } from "next/navigation"; // usePathname pode ser útil
+import { useUser, type Team } from "@stackframe/stack";
+import { useRouter, usePathname } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { type OnboardingClientMetadata, type FullClientMetadata } from "../../types/onboarding";
 import { formatCNPJ, formatCPF, formatPhone, isValidCNPJ, isValidCPF, isValidPhone } from "@/lib/validation";
+import apiClient from "@/lib/axios";
 
 // Logger
 const logger = {
@@ -24,33 +24,17 @@ const logger = {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const pathname = usePathname(); // Para checar se já está no onboarding
   const user = useUser({ or: "redirect" });
-
-  // Chame useTeams() no nível superior
-  const teams = user?.useTeams(); // Retorna Team[] ou undefined se user for null
+  const teams = user?.useTeams();
 
   const [accountType, setAccountType] = React.useState<"individual" | "business" | undefined>("business");
   const [displayName, setDisplayName] = React.useState('');
   const [identifierValue, setIdentifierValue] = React.useState('');
   const [businessTypeValue, setBusinessTypeValue] = React.useState('');
   const [phoneValue, setPhoneValue] = React.useState('');
-  const [isAgreed, setIsAgreed] = React.useState(false); // Agreement State
-
-  // Handlers for Masking
-  const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value;
-      if (accountType === 'business') {
-          setIdentifierValue(formatCNPJ(raw));
-      } else {
-          setIdentifierValue(formatCPF(raw));
-      }
-      setError(null); // Clear error on edit
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setPhoneValue(formatPhone(e.target.value));
-  };
+  const [referralCode, setReferralCode] = React.useState('');
+  const [referralFeedback, setReferralFeedback] = React.useState<{valid: boolean, message?: string} | null>(null);
+  const [isAgreed, setIsAgreed] = React.useState(false);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -60,25 +44,46 @@ export default function OnboardingPage() {
   React.useEffect(() => {
     if (user && user.clientMetadata && (user.clientMetadata as OnboardingClientMetadata).onboarded) {
       logger.info("Usuário já completou onboarding, redirecionando para dashboard...");
-      // 'teams' já foi chamado no nível superior e está disponível aqui
-      if (Array.isArray(teams) && teams.length > 0) { // Checa se teams é um array e tem itens
+      if (Array.isArray(teams) && teams.length > 0) {
         const targetTeamId = user.selectedTeam?.id || teams[0].id;
         if (!user.selectedTeam) {
             user.setSelectedTeam(teams[0]).then(() => router.push(`/dashboard/${targetTeamId}`));
         } else {
             router.push(`/dashboard/${targetTeamId}`);
         }
-      } else if (Array.isArray(teams)) { // teams é um array vazio, usuário onboarded mas sem times
-        logger.info("Usuário onboarded, mas sem times. Permanece no onboarding para criar um time ou lógica de dashboard ajustada.")
-        // Neste caso, o usuário está onboarded mas pode não ter um time criado ainda.
-        // O fluxo de handleSubmit abaixo criará o primeiro time.
-        // Se o dashboard principal (fora de [teamId]) puder lidar com isso, pode redirecionar para lá.
-        // router.push('/dashboard'); // Ou deixe o usuário criar o time no onboarding
       }
-      // Se 'teams' for undefined, ainda está carregando, o useEffect rodará de novo.
     }
-  }, [user, teams, router]); // Adicionado 'teams' como dependência
+  }, [user, teams, router]);
 
+  const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      if (accountType === 'business') {
+          setIdentifierValue(formatCNPJ(raw));
+      } else {
+          setIdentifierValue(formatCPF(raw));
+      }
+      setError(null);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setPhoneValue(formatPhone(e.target.value));
+  };
+
+  const validateReferral = async (code: string) => {
+      if (!code || code.length < 3) return;
+      try {
+          // Usando apiClient (axios) ou fetch no endpoint público
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/public/referrals/validate/${code}`);
+          const data = await res.json();
+          if (data.valid) {
+              setReferralFeedback({ valid: true, message: `Código válido! Indicado por ${data.ownerName || 'Parceiro'}.` });
+          } else {
+              setReferralFeedback({ valid: false, message: "Código inválido." });
+          }
+      } catch (err) {
+          console.error("Error validating referral:", err);
+      }
+  };
 
   const handleNextStep = () => {
     if (currentStep === 1 && !accountType) {
@@ -93,94 +98,65 @@ export default function OnboardingPage() {
     e.preventDefault();
     if (!user) {
         setError("Sessão do usuário não encontrada. Por favor, recarregue a página.");
-        logger.error("Tentativa de submit sem objeto 'user' definido.");
         return;
     }
     setIsSubmitting(true);
     setError(null);
 
+    // Validation checks
     if (!displayName.trim()) {
       setError(accountType === "business" ? "O nome da empresa é obrigatório." : "Seu nome é obrigatório.");
-      setIsSubmitting(false);
-      return;
+      setIsSubmitting(false); return;
     }
     if (!identifierValue.trim()) {
       setError(accountType === "business" ? "O CNPJ é obrigatório." : "O CPF é obrigatório.");
-      setIsSubmitting(false);
-      return;
+      setIsSubmitting(false); return;
     }
-    
-    // Strict Validation
-    if (accountType === 'business') {
-        if (!isValidCNPJ(identifierValue)) {
-            setError("CNPJ inválido. Verifique o número digitado.");
-            setIsSubmitting(false);
-            return;
-        }
-    } else {
-        if (!isValidCPF(identifierValue)) {
-            setError("CPF inválido. Verifique o número digitado.");
-            setIsSubmitting(false);
-            return;
-        }
+    if (accountType === 'business' && !isValidCNPJ(identifierValue)) {
+        setError("CNPJ inválido."); setIsSubmitting(false); return;
     }
-
+    if (accountType !== 'business' && !isValidCPF(identifierValue)) {
+        setError("CPF inválido."); setIsSubmitting(false); return;
+    }
     if (phoneValue && !isValidPhone(phoneValue)) {
-        setError("Telefone inválido. Formato esperado: (XX) XXXXX-XXXX");
-        setIsSubmitting(false);
-        return;
+        setError("Telefone inválido."); setIsSubmitting(false); return;
     }
-
     if (accountType === "business" && !businessTypeValue.trim()) {
-        setError("O tipo de negócio é obrigatório para empresas.");
-        setIsSubmitting(false);
-        return;
+        setError("O tipo de negócio é obrigatório para empresas."); setIsSubmitting(false); return;
+    }
+    if (!isAgreed) {
+        setError("Você precisa aceitar os termos."); setIsSubmitting(false); return;
     }
 
     try {
       let targetTeam: Team | null | undefined = user.selectedTeam;
-      // 'teams' já foi chamado no nível superior
-      const currentTeams = teams || []; // Garante que é um array
+      const currentTeams = teams || [];
 
       if (!currentTeams || currentTeams.length === 0) {
-        logger.info("Usuário não tem times, criando um novo time com displayName:", displayName);
         const newTeam = await user.createTeam({ displayName: displayName });
-        if (!newTeam) {
-          throw new Error("Falha ao criar a empresa/time inicial no Stack Auth.");
-        }
+        if (!newTeam) throw new Error("Falha ao criar a empresa/time inicial.");
         await user.setSelectedTeam(newTeam);
         targetTeam = newTeam;
-        logger.info("Novo time criado e selecionado:", newTeam.id);
       } else if (!targetTeam && currentTeams.length > 0) {
         targetTeam = currentTeams[0];
         await user.setSelectedTeam(targetTeam);
-        logger.info("Primeiro time existente selecionado:", targetTeam.id);
       } else if (targetTeam && targetTeam.displayName !== displayName) {
-        // Se o nome do formulário for diferente do nome do time selecionado,
-        // atualiza o nome do time selecionado.
-        logger.info(`Atualizando nome do time de "${targetTeam.displayName}" para "${displayName}"`);
         await targetTeam.update({ displayName: displayName });
-        // targetTeam já é a referência correta, displayName será atualizado no objeto
       }
 
-      if (!targetTeam) {
-          throw new Error("Não foi possível determinar ou criar um time para o usuário.");
-      }
+      if (!targetTeam) throw new Error("Não foi possível determinar ou criar um time.");
 
       let detectedTimezone = "America/Sao_Paulo";
-      try {
-        detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || detectedTimezone;
-      } catch (tzError) {
-        logger.warn("Não foi possível detectar o timezone, usando fallback.", tzError);
-      }
+      try { detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || detectedTimezone; } catch (e) {}
 
-      const metadataToUpdate: FullClientMetadata = { // Usando FullClientMetadata
+      const metadataToUpdate: FullClientMetadata = {
         onboarded: true,
         teamDisplayName: targetTeam.displayName,
         accountType: accountType,
         identifierValue: identifierValue,
         businessType: accountType === "business" ? businessTypeValue : undefined,
         phone: phoneValue.trim() || undefined,
+        referralCode: referralCode || undefined,
         detectedTimezone: detectedTimezone,
       };
 
@@ -191,215 +167,109 @@ export default function OnboardingPage() {
         },
       });
 
-      logger.info("Onboarding concluído e metadados do usuário atualizados no Stack Auth.");
-      toast.success("Configuração inicial concluída com sucesso!");
-
+      toast.success("Configuração inicial concluída!");
       router.push(`/dashboard/${targetTeam.id}`);
 
     } catch (err: any) {
-      logger.error("Erro durante o processo de onboarding:", err);
-      setError(err.message || "Ocorreu um erro desconhecido durante a configuração.");
-      toast.error(err.message || "Falha ao concluir o onboarding.");
+      logger.error("Erro onboarding:", err);
+      setError(err.message || "Ocorreu um erro desconhecido.");
+      toast.error("Falha ao concluir o onboarding.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!user || teams === undefined) { // teams === undefined significa que useTeams() ainda não resolveu
+  if (!user || teams === undefined) {
     return <div className="flex items-center justify-center h-screen">Carregando sua sessão...</div>;
   }
 
-  // Se o usuário já completou o onboarding, o useEffect acima deve ter redirecionado.
-  // Se, por algum motivo, não redirecionou e chegou aqui, mas está onboarded,
-  // pode mostrar uma mensagem ou tentar redirecionar de novo.
-  // Mas é melhor confiar no useEffect para o redirecionamento.
-
-  // O formulário de onboarding (Passo 1 e Passo 2)
-  // (O restante do JSX do formulário permanece o mesmo da sua última versão)
-    if (currentStep === 1) {
-      return (
-        <div className="flex items-center justify-center min-h-screen w-screen bg-background text-foreground py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full p-8 bg-card text-card-foreground rounded-lg shadow-xl space-y-6 border border-border">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-2">Configuração Inicial</h1>
-              <p className="text-muted-foreground mb-6">Como você usará nossos serviços?</p>
-            </div>
-            {error && <p className="text-red-500 dark:text-red-400 text-sm text-center mb-4">{error}</p>}
-
-            <RadioGroup
-              onValueChange={(value) => {
-                setAccountType(value as "individual" | "business");
-                setError(null);
-              }}
-              value={accountType}
-              className="space-y-3"
-            >
-              <Label
-                htmlFor="individual"
-                className={cn(
-                  "flex items-center space-x-3 p-4 border rounded-md cursor-pointer transition-colors duration-150",
-                  "hover:bg-muted/50 dark:hover:bg-muted/20",
-                  accountType === "individual" ? "bg-primary/10 border-primary dark:bg-primary/20 dark:border-primary" : "border-border"
-                )}
-              >
-                <RadioGroupItem value="individual" id="individual" />
-                <div className="flex-1">
-                  <span className="font-medium">Uso Individual / Profissional Liberal</span>
-                  <p className="text-sm text-muted-foreground mt-1">Para quem gerencia a própria agenda e configurações.</p>
-                </div>
-              </Label>
-              <Label
-                htmlFor="business"
-                className={cn(
-                  "flex items-center space-x-3 p-4 border rounded-md cursor-pointer transition-colors duration-150",
-                  "hover:bg-muted/50 dark:hover:bg-muted/20",
-                  accountType === "business" ? "bg-primary/10 border-primary dark:bg-primary/20 dark:border-primary" : "border-border"
-                )}
-              >
-                <RadioGroupItem value="business" id="business" />
-                <div className="flex-1">
-                  <span className="font-medium">Para Minha Empresa / Clínica</span>
-                  <p className="text-sm text-muted-foreground mt-1">Para gerenciar múltiplos profissionais e outras configurações.</p>
-                </div>
-              </Label>
-            </RadioGroup>
-
-            <Button
-              onClick={handleNextStep}
-              disabled={!accountType || isSubmitting}
-              className="w-full mt-6"
-            >
-              Próximo
-            </Button>
+  // Step 1: Account Type
+  if (currentStep === 1) {
+    return (
+      <div className="flex items-center justify-center min-h-screen w-screen bg-background text-foreground py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full p-8 bg-card text-card-foreground rounded-lg shadow-xl space-y-6 border border-border">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-2">Configuração Inicial</h1>
+            <p className="text-muted-foreground mb-6">Como você usará nossos serviços?</p>
           </div>
-        </div>
-      );
-    }
+          {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
 
-    if (currentStep === 2 && accountType) {
-      return (
-        <div className="flex items-center justify-center min-h-screen w-screen bg-background text-foreground py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full p-8 bg-card text-card-foreground rounded-lg shadow-xl space-y-6 border border-border">
-            <button
-              onClick={() => { setCurrentStep(1); setError(null);}}
-              className="text-sm text-primary hover:underline mb-4 focus:outline-none"
-            >
-              ← Voltar para selecionar tipo de conta
-            </button>
-            <div className="text-center">
-              <h1 className="text-2xl font-bold mb-2">
-                {accountType === "business" ? "Detalhes da Empresa" : "Seus Detalhes"}
-              </h1>
-              <p className="text-muted-foreground">
-                Por favor, preencha as informações abaixo para continuar.
-              </p>
+          <RadioGroup onValueChange={(v) => { setAccountType(v as any); setError(null); }} value={accountType} className="space-y-3">
+            <Label htmlFor="individual" className={cn("flex items-center space-x-3 p-4 border rounded-md cursor-pointer hover:bg-muted/50 transition-colors", accountType === "individual" ? "bg-primary/10 border-primary" : "border-border")}>
+              <RadioGroupItem value="individual" id="individual" />
+              <div className="flex-1"><span className="font-medium">Uso Individual</span><p className="text-sm text-muted-foreground">Para profissionais autônomos.</p></div>
+            </Label>
+            <Label htmlFor="business" className={cn("flex items-center space-x-3 p-4 border rounded-md cursor-pointer hover:bg-muted/50 transition-colors", accountType === "business" ? "bg-primary/10 border-primary" : "border-border")}>
+              <RadioGroupItem value="business" id="business" />
+              <div className="flex-1"><span className="font-medium">Para Minha Empresa</span><p className="text-sm text-muted-foreground">Para clínicas e times.</p></div>
+            </Label>
+          </RadioGroup>
+
+          <Button onClick={handleNextStep} disabled={!accountType || isSubmitting} className="w-full mt-6">Próximo</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: Details
+  return (
+    <div className="flex items-center justify-center min-h-screen w-screen bg-background text-foreground py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full p-8 bg-card text-card-foreground rounded-lg shadow-xl space-y-6 border border-border">
+        <button onClick={() => { setCurrentStep(1); setError(null);}} className="text-sm text-primary hover:underline mb-4">← Voltar</button>
+        <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">{accountType === "business" ? "Detalhes da Empresa" : "Seus Detalhes"}</h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+            {error && <p className="text-red-500 text-sm text-center py-2 bg-red-50 rounded-md">{error}</p>}
+            
+            <div>
+                <Label htmlFor="displayName">{accountType === "business" ? "Nome da Empresa" : "Seu Nome"} <span className="text-red-500">*</span></Label>
+                <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && <p className="text-red-500 dark:text-red-400 text-sm text-center py-2 bg-red-50 dark:bg-red-900/20 rounded-md">{error}</p>}
-              <div>
-                <Label htmlFor="displayName" className="block text-sm font-semibold mb-1">
-                  {accountType === "business" ? "Nome da Empresa/Clínica" : "Seu Nome Completo"} <span className="text-red-500 dark:text-red-400">*</span>
-                </Label>
-                <Input
-                  id="displayName"
-                  placeholder={accountType === "business" ? "Ex: Clínica Sorriso Feliz" : "Ex: Dra. Ana Maria Silva"}
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                />
-              </div>
+            <div>
+                <Label htmlFor="identifierValue">{accountType === "business" ? "CNPJ" : "CPF"} <span className="text-red-500">*</span></Label>
+                <Input id="identifierValue" value={identifierValue} onChange={handleIdentifierChange} required />
+            </div>
 
-              <div>
-                <Label htmlFor="identifierValue" className="block text-sm font-semibold mb-1">
-                  {accountType === "business" ? "CNPJ" : "CPF"} <span className="text-red-500 dark:text-red-400">*</span>
-                </Label>
-                <Input
-                  id="identifierValue"
-                  placeholder={accountType === "business" ? "00.000.000/0001-00" : "000.000.000-00"}
-                  value={identifierValue}
-                  onChange={handleIdentifierChange}
-                  maxLength={accountType === 'business' ? 18 : 14}
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1 text-right">
-                    {accountType === "business" 
-                        ? (isValidCNPJ(identifierValue) ? <span className="text-green-600 font-medium">CNPJ Válido</span> : identifierValue.length > 0 ? <span className="text-amber-600 font-medium">Formato Inválido</span> : "")
-                        : (isValidCPF(identifierValue) ? <span className="text-green-600 font-medium">CPF Válido</span> : identifierValue.length > 0 ? <span className="text-amber-600 font-medium">Formato Inválido</span> : "")
-                    }
-                </p>
-              </div>
-
-              {accountType === "business" && (
+            {accountType === "business" && (
                 <div>
-                  <Label htmlFor="businessTypeValue" className="block text-sm font-semibold mb-1">
-                    Tipo de Negócio <span className="text-red-500 dark:text-red-400">*</span>
-                  </Label>
-                   <Select onValueChange={setBusinessTypeValue} value={businessTypeValue}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione o tipo do seu negócio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="clinica_medica">Clínica Médica</SelectItem>
-                      <SelectItem value="clinica_odontologica">Clínica Odontológica</SelectItem>
-                      <SelectItem value="consultorio_psicologia">Consultório de Psicologia</SelectItem>
-                      <SelectItem value="estudio_beleza">Estúdio de Beleza/Estética</SelectItem>
-                      <SelectItem value="servicos_profissionais">Serviços Profissionais Diversos</SelectItem>
-                      <SelectItem value="outro">Outro Tipo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <Label htmlFor="businessTypeValue">Tipo de Negócio <span className="text-red-500">*</span></Label>
+                    <Select onValueChange={setBusinessTypeValue} value={businessTypeValue}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="clinica_medica">Clínica Médica</SelectItem>
+                            <SelectItem value="clinica_odontologica">Clínica Odontológica</SelectItem>
+                            <SelectItem value="estudio_beleza">Estúdio de Beleza</SelectItem>
+                            <SelectItem value="outro">Outro</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-              )}
+            )}
 
-              <div>
-                <Label htmlFor="phoneValue" className="block text-sm font-semibold mb-1">
-                  Seu Telefone Principal (com DDD)
-                </Label>
-                <Input
-                  id="phoneValue"
-                  type="tel"
-                  placeholder="Ex: 11912345678"
-                  value={phoneValue}
-                  onChange={handlePhoneChange}
-                  maxLength={15}
-                />
-              </div>
+            <div>
+                <Label htmlFor="phoneValue">Telefone Principal</Label>
+                <Input id="phoneValue" type="tel" value={phoneValue} onChange={handlePhoneChange} placeholder="(99) 99999-9999" />
+            </div>
 
-              <p className="text-xs text-muted-foreground pt-2 text-center">
-                 Fuso horário que usaremos: {Intl.DateTimeFormat().resolvedOptions().timeZone || "Não detectado (usaremos padrão)"}
-              </p>
-
-              <div className="flex items-start space-x-2 py-2">
-                <Checkbox 
-                    id="terms" 
-                    checked={isAgreed} 
-                    onCheckedChange={(c: boolean | 'indeterminate') => setIsAgreed(c === true)} 
-                />
-                <div className="grid gap-1.5 leading-none">
-                    <Label
-                        htmlFor="terms"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                        Li e concordo com os <a href="/terms" target="_blank" className="text-primary hover:underline">Termos de Uso (Contrato SaaS)</a> e <a href="/privacy" target="_blank" className="text-primary hover:underline">Política de Privacidade</a>.
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                        Ao clicar em continuar, você aceita o licenciamento do software Clara.
-                    </p>
+            <div className="space-y-2 pt-2 border-t">
+                <Label htmlFor="referral">Código de Indicação (Opcional)</Label>
+                <div className="flex gap-2">
+                    <Input id="referral" placeholder="Ex: AMIGO-123" value={referralCode} onChange={(e) => { setReferralCode(e.target.value.toUpperCase()); setReferralFeedback(null); }} onBlur={(e) => validateReferral(e.target.value)} />
+                    {referralFeedback && <span className={cn("text-sm self-center", referralFeedback.valid ? "text-green-600" : "text-red-600")}>{referralFeedback.message}</span>}
                 </div>
-              </div>
+                <p className="text-xs text-muted-foreground">Insira para ganhar 5% de desconto.</p>
+            </div>
 
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full text-base"
-              >
-                {isSubmitting ? "Salvando Configurações..." : "Concluir e Ir para o Dashboard"}
-              </Button>
-            </form>
-          </div>
-        </div>
-      );
-    }
+            <div className="flex items-start space-x-2 pt-2">
+                <Checkbox id="terms" checked={isAgreed} onCheckedChange={(c) => setIsAgreed(c === true)} />
+                <Label htmlFor="terms" className="text-sm font-normal">Concordo com os <a href="/terms" className="underline text-primary">Termos</a> e <a href="/privacy" className="underline text-primary">Privacidade</a>.</Label>
+            </div>
 
-  return <div className="flex items-center justify-center h-screen bg-background text-foreground">Carregando formulário de configuração...</div>;
+            <Button type="submit" disabled={isSubmitting} className="w-full">Concluir</Button>
+        </form>
+      </div>
+    </div>
+  );
 }
