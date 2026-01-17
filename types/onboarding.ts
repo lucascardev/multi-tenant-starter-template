@@ -10,5 +10,6 @@ export interface OnboardingClientMetadata {
     identifierValue?: string;
     businessType?: string;
     phone?: string;
+    referralCode?: string;
     detectedTimezone?: string;
   }
