@@ -16,8 +16,18 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogClose, // Removido DialogTrigger não usado diretamente aqui para <Dialog open>
+	DialogClose, 
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -135,6 +145,19 @@ export default function WhatsAppInstancesPage() {
 	const [isPairingCodeMode, setIsPairingCodeMode] = useState(false)
 	const [pairingPhoneNumber, setPairingPhoneNumber] = useState('')
 	const [isRequestingCode, setIsRequestingCode] = useState(false)
+
+	// Confirmation Dialog State
+	const [confirmDialog, setConfirmDialog] = useState<{
+		isOpen: boolean
+		type: 'connect' | 'disconnect' | 'delete'
+		instanceId: string
+		instanceName: string
+	}>({
+		isOpen: false,
+		type: 'connect',
+		instanceId: '',
+		instanceName: '',
+	})
 
 	const fetchAllData = useCallback(
 		async (showLoadingSpinner = false) => {
@@ -486,16 +509,32 @@ export default function WhatsAppInstancesPage() {
 		setIsQrDialogOpen(true)
 	}
 
-	const handleDeleteInstance = async (instanceId: string) => {
-		if (
-			!confirm(
-				'Tem certeza que deseja deletar esta instância? Esta ação não pode ser desfeita e interromperá a conexão.'
-			)
-		) {
-			return
+	const openConfirmDialog = (type: 'connect' | 'disconnect' | 'delete', instance: Instance) => {
+		setConfirmDialog({
+			isOpen: true,
+			type,
+			instanceId: instance.id,
+			instanceName: instance.instance_name,
+		})
+	}
+
+	const handleConfirmAction = async () => {
+		const { type, instanceId } = confirmDialog
+		setConfirmDialog((prev) => ({ ...prev, isOpen: false })) // Close dialog immediately
+
+		if (type === 'delete') {
+			await handleDeleteInstance(instanceId)
+		} else if (type === 'disconnect') {
+			await handleDisconnectInstance(instanceId)
+		} else if (type === 'connect') {
+			await handleConnectInstance(instanceId)
 		}
+	}
+
+	const handleDeleteInstance = async (instanceId: string) => {
 		setIsSubmittingAction(true)
 		try {
+			// Optimistically remove from list (optional, but safer to wait for API)
 			const response = await apiClient.delete(`/instances/${instanceId}`)
 			toast.success(
 				response.data.message || 'Instância deletada com sucesso.'
@@ -515,10 +554,14 @@ export default function WhatsAppInstancesPage() {
 	}
 
 	const handleConnectInstance = async (instanceId: string) => {
-		if (!confirm('Tentar conectar/reconectar esta instância do WhatsApp?'))
-			return
-		setConnectingInstances((prev) => new Set(prev).add(instanceId)) // Adiciona ao set de "conectando"
-		setIsSubmittingAction(true) // Pode usar um estado de loading mais granular por card de instância
+		setConnectingInstances((prev) => new Set(prev).add(instanceId))
+		setIsSubmittingAction(true)
+		
+		// OPTIMISTIC UPDATE: Set status to 'connecting' locally immediately
+		setInstances(prev => prev.map(inst => 
+			inst.id === instanceId ? { ...inst, status: 'connecting' } : inst
+		))
+
 		try {
 			const response = await apiClient.post(
 				`/instances/${instanceId}/connect`
@@ -526,8 +569,7 @@ export default function WhatsAppInstancesPage() {
 			toast.info(
 				response.data.message || 'Solicitação de conexão enviada.'
 			)
-			// O polling da lista (fetchAllData) vai atualizar o status eventualmente.
-			// Forçar um fetch mais rápido para feedback imediato.
+			// Polling will catch the final status
 			setTimeout(() => fetchAllData(false), 1500)
 		} catch (error: any) {
 			logger.error(
@@ -537,10 +579,11 @@ export default function WhatsAppInstancesPage() {
 			toast.error(
 				error.response?.data?.message || 'Falha ao solicitar conexão.'
 			)
+			// Revert optimistic update on error
+			fetchAllData(false)
 		} finally {
 			setIsSubmittingAction(false)
 			setConnectingInstances((prev) => {
-				// Remove do set após a tentativa
 				const next = new Set(prev)
 				next.delete(instanceId)
 				return next
@@ -549,14 +592,14 @@ export default function WhatsAppInstancesPage() {
 	}
 
 	const handleDisconnectInstance = async (instanceId: string) => {
-		if (
-			!confirm(
-				'Tem certeza que deseja desconectar esta instância do WhatsApp?'
-			)
-		)
-			return
 		setIsSubmittingAction(true)
-		setConnectingInstances((prev) => new Set(prev).add(instanceId)) // Reutiliza para indicar ação em progresso
+		setConnectingInstances((prev) => new Set(prev).add(instanceId))
+		
+		// OPTIMISTIC UPDATE: Set status to 'disconnecting' or 'disconnected' locally
+		setInstances(prev => prev.map(inst => 
+			inst.id === instanceId ? { ...inst, status: 'disconnected' } : inst
+		))
+
 		try {
 			const response = await apiClient.post(
 				`/instances/${instanceId}/disconnect`
@@ -574,6 +617,8 @@ export default function WhatsAppInstancesPage() {
 				error.response?.data?.message ||
 					'Falha ao solicitar desconexão.'
 			)
+			// Revert optimistic update on error
+			fetchAllData(false)
 		} finally {
 			setIsSubmittingAction(false)
 			setConnectingInstances((prev) => {
@@ -847,7 +892,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								].includes(instance.status)
 							) {
 								mainButtonAction = () =>
-									handleConnectInstance(instance.id)
+									openConfirmDialog('connect', instance)
 								mainButtonText = isCurrentlyProcessingInstance
 									? 'Processando...'
 									: 'Conectar / Tentar Novamente'
@@ -988,9 +1033,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 												variant='outline'
 												size='sm'
 												onClick={() =>
-													handleDisconnectInstance(
-														instance.id
-													)
+													openConfirmDialog('disconnect', instance)
 												}
 												className='flex-1 border-red-600 text-red-600 hover:bg-red-100 hover:text-red-600 dark:border-red-700 dark:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400'
 												disabled={isDisabled}
@@ -1013,9 +1056,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 													variant='ghost'
 													size='icon'
 													onClick={() =>
-														handleDeleteInstance(
-															instance.id
-														)
+														openConfirmDialog('delete', instance)
 													}
 													className='text-destructive hover:bg-destructive/10 hover:text-destructive'
 													disabled={isDisabled}
@@ -1222,6 +1263,31 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
+
+				<AlertDialog open={confirmDialog.isOpen} onOpenChange={(open) => {
+            if (!open) setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        }}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>
+											{confirmDialog.type === 'delete' && 'Deletar Instância?'}
+											{confirmDialog.type === 'disconnect' && 'Desconectar WhatsApp?'}
+											{confirmDialog.type === 'connect' && 'Conectar Instância?'}
+										</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {confirmDialog.type === 'delete' && 'Tem certeza que deseja deletar esta instância? Esta ação não pode ser desfeita e interromperá qualquer conexão ativa.'}
+                        {confirmDialog.type === 'disconnect' && 'Tem certeza que deseja desconectar esta instância do WhatsApp? O bot parará de responder.'}
+                        {confirmDialog.type === 'connect' && 'Deseja tentar iniciar o processo de conexão para esta instância?'}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmAction} className={cn(confirmDialog.type === 'delete' && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}>
+                        {confirmDialog.type === 'delete' ? 'Sim, Deletar' : 'Confirmar'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 			</div>
 		</TooltipProvider>
 	)
