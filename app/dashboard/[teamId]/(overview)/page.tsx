@@ -42,7 +42,10 @@ interface DashboardStats {
 
   periodStart: string | null;
   periodEnd: string | null;
-  monthlyPrice: number;
+
+  monthlyPrice: number; // Legacy, keep for safety or remove if unused, but removing might break if backend revert. Let's keep but rely on new price
+  price: number;
+  interval: 'month' | 'year';
 }
 
 interface InstanceStatusSummary {
@@ -157,7 +160,10 @@ export default function TeamDashboardPage() { // Renomeado para clareza
 
         periodStart: subData?.current_period_start || null,
         periodEnd: subData?.current_period_end || null,
+
         monthlyPrice: subData?.price_monthly || 0,
+        price: subData?.price || subData?.price_monthly || 0,
+        interval: subData?.interval || 'month',
       });
 
       setInstanceSummary(
@@ -361,22 +367,16 @@ export default function TeamDashboardPage() { // Renomeado para clareza
                  </div>
              )}
 
-            {stats?.monthlyPrice !== undefined && stats.monthlyPrice > 0 && (() => {
-                 const isYearly = stats.periodStart && stats.periodEnd 
-                    ? (new Date(stats.periodEnd).getTime() - new Date(stats.periodStart).getTime()) > (1000 * 60 * 60 * 24 * 300)
-                    : false;
-
-                 return (
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground text-sm flex items-center gap-2">
-                            <CreditCard className="h-3 w-3" /> {isYearly ? 'Valor Anual:' : 'Valor Mensal:'}
-                        </span>
-                        <span className="text-sm font-medium">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.monthlyPrice)}
-                        </span>
-                    </div>
-                 )
-             })()}
+            {stats?.price !== undefined && stats.price > 0 && (
+                <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground text-sm flex items-center gap-2">
+                        <CreditCard className="h-3 w-3" /> {stats.interval === 'year' ? 'Valor Anual:' : 'Valor Mensal:'}
+                    </span>
+                    <span className="text-sm font-medium">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.price)}
+                    </span>
+                </div>
+             )}
 
              <Separator />
 
