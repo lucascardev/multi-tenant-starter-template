@@ -91,7 +91,10 @@ const MOCK_DASHBOARD_DATA = {
     period: {
         current_period_start: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 days ago
         current_period_end: new Date(Date.now() + 86400000 * 15).toISOString(), // 15 days left
-        price_monthly: 199.90
+
+        price_monthly: 199.90,
+        price: 199.90,
+        interval: 'month'
     }
 };
 
@@ -198,7 +201,10 @@ export default function TeamDashboardPage() { // Renomeado para clareza
 
             periodStart: MOCK_DASHBOARD_DATA.period.current_period_start,
             periodEnd: MOCK_DASHBOARD_DATA.period.current_period_end,
-            monthlyPrice: MOCK_DASHBOARD_DATA.period.price_monthly
+
+            monthlyPrice: MOCK_DASHBOARD_DATA.period.price_monthly,
+            price: MOCK_DASHBOARD_DATA.period.price,
+            interval: MOCK_DASHBOARD_DATA.period.interval as 'month' | 'year',
           });
 
           setInstanceSummary(
