@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@stackframe/stack';
 import { useParams, useRouter } from 'next/navigation'; // useRouter pode não ser necessário aqui se o layout já trata
 import apiClient from '@/lib/axios';
-import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle } from 'lucide-react';
+import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle, MessageSquareOff, Bot, Lightbulb, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge'; // Para status de instância
@@ -419,6 +419,71 @@ export default function TeamDashboardPage() { // Renomeado para clareza
             </div>
         </div>
       )}
+
+      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+             <h2 className="text-xl font-semibold text-foreground mb-3">Dicas & Comandos Rápidos</h2>
+        </div>
+        
+        <Card className="bg-orange-50/50 dark:bg-orange-950/10 border-orange-200 dark:border-orange-900">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-400">
+                    <MessageSquareOff className="h-4 w-4" />
+                    Pausar Atendimento (Modo Humano)
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                    Assuma o controle do chat e impeça a Clara de responder:
+                </p>
+                <code className="relative rounded bg-white dark:bg-black/20 px-[0.5rem] py-[0.3rem] font-mono text-sm font-semibold border border-orange-200 dark:border-orange-800">
+                    /atendimento on
+                </code>
+            </CardContent>
+        </Card>
+
+            <Card className="bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-900">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <Bot className="h-4 w-4" />
+                    Retomar Atendimento
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                    Faça a Clara voltar a responder automaticamente:
+                </p>
+                <code className="relative rounded bg-white dark:bg-black/20 px-[0.5rem] py-[0.3rem] font-mono text-sm font-semibold border border-green-200 dark:border-green-800">
+                    /atendimento off
+                </code>
+            </CardContent>
+        </Card>
+
+        <Card className="col-span-1 md:col-span-2 lg:col-span-1 border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/10">
+                <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                    <Lightbulb className="h-4 w-4" />
+                    Melhores Práticas
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-2">
+                <div className="flex gap-3 items-start">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500 mt-1 shrink-0" />
+                        <div>
+                        <p className="text-sm font-medium">Mantenha Conectado</p>
+                        <p className="text-xs text-muted-foreground">O WhatsApp deve estar online no celular.</p>
+                        </div>
+                </div>
+                    <div className="flex gap-3 items-start">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500 mt-1 shrink-0" />
+                        <div>
+                        <p className="text-sm font-medium">Instruções Claras</p>
+                        <p className="text-xs text-muted-foreground">Dê exemplos de diálogo na Persona.</p>
+                        </div>
+                </div>
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
