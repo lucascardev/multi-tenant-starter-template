@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@stackframe/stack';
 import { useParams, useRouter } from 'next/navigation'; // useRouter pode não ser necessário aqui se o layout já trata
 import apiClient from '@/lib/axios';
-import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle, MessageSquareOff, Bot, Lightbulb, CheckCircle2 } from 'lucide-react';
+import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle, MessageSquareOff, Bot, Lightbulb, CheckCircle2, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge'; // Para status de instância
@@ -480,6 +480,28 @@ export default function TeamDashboardPage() { // Renomeado para clareza
                         <p className="text-sm font-medium">Instruções Claras</p>
                         <p className="text-xs text-muted-foreground">Dê exemplos de diálogo na Persona.</p>
                         </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card className="bg-slate-50/50 dark:bg-slate-950/10 border-slate-200 dark:border-slate-800">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-slate-700 dark:text-slate-400">
+                    <Shield className="h-4 w-4" />
+                    Bloqueio de Números
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                    Gerencie números que a IA deve ignorar (spam/outros):
+                </p>
+                <div className="space-y-2">
+                    <code className="block rounded bg-white dark:bg-black/20 px-[0.5rem] py-[0.3rem] font-mono text-xs font-semibold border border-slate-200 dark:border-slate-800">
+                        /whitelist add 5511...
+                    </code>
+                     <code className="block rounded bg-white dark:bg-black/20 px-[0.5rem] py-[0.3rem] font-mono text-xs font-semibold border border-slate-200 dark:border-slate-800">
+                        /whitelist list
+                    </code>
                 </div>
             </CardContent>
         </Card>

@@ -3,7 +3,7 @@
 import { isValidPhone, formatPhone } from '@/lib/validation';
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -140,6 +140,11 @@ export default function AiConfigurationPage() {
         ownerAlertInstruction: '',
 	})
 
+    // Whitelist State
+    const [phoneNumberWhitelist, setPhoneNumberWhitelist] = useState<string[]>([]);
+    const [newWhiteListPhone, setNewWhiteListPhone] = useState('');
+    const [isSavingWhitelist, setIsSavingWhitelist] = useState(false);
+
     const [newOwnerPhone, setNewOwnerPhone] = useState('') // Input temporário
 
 	const [instructionFormData, setInstructionFormData] =
@@ -163,12 +168,20 @@ export default function AiConfigurationPage() {
 		if (!user || !team) return
 		setIsLoading(true)
 		try {
-			const [personasRes, subInfoRes, templatesRes] = await Promise.all([
+			const [personasRes, subInfoRes, templatesRes, clientConfigRes] = await Promise.all([
 				apiClient.get('/personas'),
 				apiClient.get('/subscriptions/current'),
                 apiClient.get('/personas/templates'),
+                apiClient.get('/client/config'), // Fetch client config for whitelist
 			])
 			setPersonas(personasRes.data.personas || [])
+
+            // Process Whitelist
+            if (clientConfigRes.data && Array.isArray(clientConfigRes.data.phone_number_whitelist)) {
+                setPhoneNumberWhitelist(clientConfigRes.data.phone_number_whitelist.map(String));
+            } else {
+                setPhoneNumberWhitelist([]);
+            }
             
             // Process Templates
             if (templatesRes.data.templates && Array.isArray(templatesRes.data.templates)) {
@@ -280,6 +293,42 @@ export default function AiConfigurationPage() {
             ownerPhones: prev.ownerPhones.filter(p => p !== phoneToRemove)
         }));
     };
+
+    // Whitelist Handlers
+    const handleAddWhitelistPhone = async () => {
+         if (newWhiteListPhone && !phoneNumberWhitelist.includes(newWhiteListPhone)) {
+             if (!isValidPhone(newWhiteListPhone)) {
+                toast.error("Número inválido. Use formato DDI+DDD+Numero (Ex: 5511999999999)");
+                return;
+            }
+            const updatedList = [...phoneNumberWhitelist, newWhiteListPhone];
+            setPhoneNumberWhitelist(updatedList);
+            setNewWhiteListPhone('');
+            await saveWhitelist(updatedList);
+        }
+    };
+
+    const handleRemoveWhitelistPhone = async (phone: string) => {
+        const updatedList = phoneNumberWhitelist.filter(p => p !== phone);
+        setPhoneNumberWhitelist(updatedList);
+        await saveWhitelist(updatedList);
+    };
+
+    const saveWhitelist = async (newList: string[]) => {
+        setIsSavingWhitelist(true);
+        try {
+            await apiClient.post('/client/config', {
+                phoneNumberWhitelist: newList
+            });
+            toast.success("Whitelist atualizada!");
+        } catch (error) {
+            console.error("Erro ao salvar whitelist:", error);
+            toast.error("Erro ao salvar whitelist.");
+            // Reverter em caso de erro? O ideal seria, mas por simplificação deixamos assim por enquanto.
+        } finally {
+            setIsSavingWhitelist(false);
+        }
+    }
 
 
 	const resetForm = () => {
@@ -539,6 +588,53 @@ export default function AiConfigurationPage() {
                 </Button>
                 </div>
 			</div>
+
+
+
+            {/* WHITELIST SECTION - Separado das Personas pois é global do cliente */}
+            <Card className="border-l-4 border-l-blue-500">
+                <CardHeader>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                         <Shield className="h-5 w-5 text-blue-500" /> Whitelist (Ignorar Números)
+                    </CardTitle>
+                    <CardDescription>
+                         Configure os números de telefone que a Inteligência Artificial deve IGNORAR. 
+                         A Clara não responderá a mensagens vindas destes números.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                      <div className="flex gap-2 max-w-md mb-4">
+                        <Input 
+                            placeholder="Ex: 5511999999999" 
+                            value={newWhiteListPhone}
+                            onChange={(e) => setNewWhiteListPhone(formatPhone(e.target.value))}
+                        />
+                        <Button onClick={handleAddWhitelistPhone} disabled={isSavingWhitelist}>
+                            {isSavingWhitelist ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
+                        </Button>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                        {phoneNumberWhitelist.length === 0 && (
+                            <span className="text-sm text-muted-foreground italic">Nenhum número na whitelist.</span>
+                        )}
+                        {phoneNumberWhitelist.map(phone => (
+                            <Badge key={phone} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1">
+                                {phone}
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-4 w-4 rounded-full hover:bg-destructive/20 hover:text-destructive p-0"
+                                    onClick={() => handleRemoveWhitelistPhone(phone)}
+                                    disabled={isSavingWhitelist}
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            </Badge>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* LISTA DE PERSONAS */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
