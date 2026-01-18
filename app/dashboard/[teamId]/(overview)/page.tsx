@@ -10,6 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge'; // Para status de instância
 import { toast } from 'sonner'; // Para notificações de erro
 import { Button } from '@/components/ui/button'; // Para botão de tentar novamente
+import { UsageProgressBar } from '@/components/dashboard/usage-progress-bar';
+import { Calendar, CreditCard, ExternalLink } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const logger = console;
 
@@ -26,9 +29,20 @@ const statusBadgeVariantMap: ReadonlyMap<string, "default" | "secondary" | "dest
 interface DashboardStats {
   activeInstances: number;
   totalPersonas: number;
-  messagesSentLast30Days: number;
   activeSubscriptionPlan?: string;
-  clientBusinessName?: string; // Para exibir o nome do negócio do cliente
+  clientBusinessName?: string;
+  // New Fields
+  messagesSent: number;
+  maxMessages: number;
+  graceMessages: number;
+  
+  customersAnswered: number;
+  maxCustomers: number;
+  graceCustomers: number;
+
+  periodStart: string | null;
+  periodEnd: string | null;
+  monthlyPrice: number;
 }
 
 interface InstanceStatusSummary {
@@ -59,8 +73,30 @@ const MOCK_DASHBOARD_DATA = {
     clientConfig: {
         messages_sent: 1250,
         business_name: 'Clínica Modelo (Dev)'
+    },
+    // Mock Extended
+    usage_stats: {
+        messages_sent: 850,
+        customers_answered: 120
+    },
+    limits: {
+        max_messages: 1000,
+        grace_messages: 500,
+        max_customers: 200,
+        grace_customers: 50
+    },
+    period: {
+        current_period_start: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 days ago
+        current_period_end: new Date(Date.now() + 86400000 * 15).toISOString(), // 15 days left
+        price_monthly: 199.90
     }
 };
+
+const calculateProjection = (current: number, totalDays: number = 30, daysPassed: number) => {
+    if (daysPassed < 1) return current;
+    const dailyAvg = current / daysPassed;
+    return Math.floor(dailyAvg * totalDays);
+}
 
 export default function TeamDashboardPage() { // Renomeado para clareza
   const user = useUser({ or: "redirect" }); // or:redirect garante que user exista se renderizar
@@ -107,9 +143,21 @@ export default function TeamDashboardPage() { // Renomeado para clareza
       setStats({
         activeInstances: instancesData.filter((inst: any) => inst.status === 'connected').length,
         totalPersonas: personasData.length,
-        messagesSentLast30Days: clientConfigData.messages_sent ?? 0,
         activeSubscriptionPlan: subData?.plan_name || "Plano não identificado",
-        clientBusinessName: team.displayName, // Usar o displayName do time do Stack Auth
+        clientBusinessName: team.displayName,
+        
+        // New Data Mapping
+        messagesSent: subData?.usage_stats?.messages_sent ?? (clientConfigData.messages_sent ?? 0),
+        maxMessages: subData?.max_messages_count ?? 1000,
+        graceMessages: subData?.grace_messages_count ?? 0,
+
+        customersAnswered: subData?.usage_stats?.customers_answered ?? 0,
+        maxCustomers: subData?.max_customers_count ?? 100, // Default fallback
+        graceCustomers: subData?.grace_customers_count ?? 0,
+
+        periodStart: subData?.current_period_start || null,
+        periodEnd: subData?.current_period_end || null,
+        monthlyPrice: subData?.price_monthly || 0,
       });
 
       setInstanceSummary(
@@ -128,12 +176,23 @@ export default function TeamDashboardPage() { // Renomeado para clareza
       if (process.env.NODE_ENV === 'development') {
           logger.warn("Usando MOCK DATA para o dashboard devido a erro na API.");
           
-          setStats({
+           setStats({
             activeInstances: MOCK_DASHBOARD_DATA.instances.filter((inst: any) => inst.status === 'connected').length,
             totalPersonas: MOCK_DASHBOARD_DATA.personas.length,
-            messagesSentLast30Days: MOCK_DASHBOARD_DATA.clientConfig.messages_sent,
             activeSubscriptionPlan: MOCK_DASHBOARD_DATA.subscription.plan_name,
             clientBusinessName: MOCK_DASHBOARD_DATA.clientConfig.business_name,
+            
+            messagesSent: MOCK_DASHBOARD_DATA.usage_stats.messages_sent,
+            maxMessages: MOCK_DASHBOARD_DATA.limits.max_messages,
+            graceMessages: MOCK_DASHBOARD_DATA.limits.grace_messages,
+
+            customersAnswered: MOCK_DASHBOARD_DATA.usage_stats.customers_answered,
+            maxCustomers: MOCK_DASHBOARD_DATA.limits.max_customers,
+            graceCustomers: MOCK_DASHBOARD_DATA.limits.grace_customers,
+
+            periodStart: MOCK_DASHBOARD_DATA.period.current_period_start,
+            periodEnd: MOCK_DASHBOARD_DATA.period.current_period_end,
+            monthlyPrice: MOCK_DASHBOARD_DATA.period.price_monthly
           });
 
           setInstanceSummary(
@@ -242,26 +301,91 @@ export default function TeamDashboardPage() { // Renomeado para clareza
             <p className="text-xs text-muted-foreground">IAs prontas para uso</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Mensagens (Mês)</CardTitle> {/* Simplificado */}
-            <MessageSquareText className="h-4 w-4 text-muted-foreground" />
+        <Card className="col-span-1 md:col-span-2"> 
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Uso do Plano</CardTitle>
+             <CardDescription>Monitore seus limites mensais</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.messagesSentLast30Days ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Interações realizadas</p>
+          <CardContent className="space-y-6">
+            <UsageProgressBar 
+                label="Mensagens Enviadas" 
+                value={stats?.messagesSent ?? 0}
+                max={stats?.maxMessages ?? 1000}
+                graceBuffer={stats?.graceMessages ?? 0}
+            />
+            {stats?.periodStart && (stats?.messagesSent ?? 0) > 0 && (() => {
+                const daysPassed = Math.max(1, Math.ceil((Date.now() - new Date(stats.periodStart!).getTime()) / (1000 * 60 * 60 * 24)));
+                const projection = calculateProjection(stats.messagesSent, 30, daysPassed); // Assuming 30 days cycle
+                const totalLimit = (stats.maxMessages + stats.graceMessages);
+                
+                if (projection > totalLimit) {
+                     return (
+                        <div className="flex items-center gap-2 p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30">
+                            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+                            <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">
+                                Estimativa: Seu plano pode esgotar em {Math.floor(totalLimit / (stats.messagesSent / daysPassed)) - daysPassed} dias.
+                            </p>
+                        </div>
+                     )
+                }
+                return null;
+            })()}
+             <UsageProgressBar 
+                label="Novos Clientes Atendidos" 
+                value={stats?.customersAnswered ?? 0}
+                max={stats?.maxCustomers ?? 100}
+                graceBuffer={stats?.graceCustomers ?? 0}
+            />
           </CardContent>
         </Card>
-         <Card>
+
+         <Card className="col-span-1 md:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Plano Atual</CardTitle>
+            <CardTitle className="text-sm font-medium">Detalhes da Assinatura</CardTitle>
             <BarChart4 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold truncate" title={stats?.activeSubscriptionPlan || "Não definido"}>
-                {stats?.activeSubscriptionPlan || "Não definido"}
-            </div>
-            <p className="text-xs text-muted-foreground">Sua assinatura ativa</p>
+          <CardContent className="space-y-4">
+             <div className="flex justify-between items-center">
+                 <span className="text-muted-foreground text-sm">Plano Atual:</span>
+                 <Badge variant="outline" className="font-semibold">{stats?.activeSubscriptionPlan || "Não definido"}</Badge>
+             </div>
+             
+             {stats?.periodEnd && (
+                 <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground text-sm flex items-center gap-2">
+                        <Calendar className="h-3 w-3" /> Renova em:
+                    </span>
+                    <span className="text-sm font-medium">
+                        {new Date(stats.periodEnd).toLocaleDateString('pt-BR')}
+                    </span>
+                 </div>
+             )}
+
+            {stats?.monthlyPrice !== undefined && stats.monthlyPrice > 0 && (
+                 <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground text-sm flex items-center gap-2">
+                        <CreditCard className="h-3 w-3" /> Valor Mensal:
+                    </span>
+                    <span className="text-sm font-medium">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.monthlyPrice)}
+                    </span>
+                 </div>
+             )}
+
+             <Separator />
+
+             <Button 
+                variant="default" 
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                    const message = encodeURIComponent("Olá, gostaria de aumentar meu limite de mensagens na Clara.")
+                    window.open(`https://wa.me/5511999999999?text=${message}`, '_blank')
+                }}
+            >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Aumentar Limites / Suporte
+             </Button>
+
           </CardContent>
         </Card>
       </div>
