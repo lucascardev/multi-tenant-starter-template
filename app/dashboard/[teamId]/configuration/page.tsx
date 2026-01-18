@@ -665,9 +665,19 @@ export default function AiConfigurationPage() {
 					</p>
 				</div>
                 <div className='flex gap-2'>
-				<Button onClick={() => { resetForm(); setShowFormDialog(true); }}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Nova Persona
-                </Button>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        style={{ display: 'none' }} 
+                        accept=".json" 
+                        onChange={handleFileChange} 
+                    />
+                     <Button variant="outline" onClick={handleImportClick}>
+                        <Upload className="mr-2 h-4 w-4" /> Importar Config
+                    </Button>
+				    <Button onClick={() => { resetForm(); setShowFormDialog(true); }}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Nova Persona
+                    </Button>
                 </div>
 			</div>
 
@@ -744,6 +754,9 @@ export default function AiConfigurationPage() {
                                  )}
                              </div>
                              <div className="mt-4 flex gap-2 justify-end">
+                                <Button variant="ghost" size="sm" onClick={() => handleExportPersona(persona)} title="Exportar Backup">
+                                    <Download className="h-4 w-4 text-muted-foreground" />
+                                </Button>
                                  <Button variant="outline" size="sm" onClick={() => handleEdit(persona)}>
                                      <Edit3 className="h-4 w-4 mr-1" /> Editar
                                  </Button>
