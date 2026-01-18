@@ -361,16 +361,22 @@ export default function TeamDashboardPage() { // Renomeado para clareza
                  </div>
              )}
 
-            {stats?.monthlyPrice !== undefined && stats.monthlyPrice > 0 && (
-                 <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground text-sm flex items-center gap-2">
-                        <CreditCard className="h-3 w-3" /> Valor Mensal:
-                    </span>
-                    <span className="text-sm font-medium">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.monthlyPrice)}
-                    </span>
-                 </div>
-             )}
+            {stats?.monthlyPrice !== undefined && stats.monthlyPrice > 0 && (() => {
+                 const isYearly = stats.periodStart && stats.periodEnd 
+                    ? (new Date(stats.periodEnd).getTime() - new Date(stats.periodStart).getTime()) > (1000 * 60 * 60 * 24 * 300)
+                    : false;
+
+                 return (
+                    <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground text-sm flex items-center gap-2">
+                            <CreditCard className="h-3 w-3" /> {isYearly ? 'Valor Anual:' : 'Valor Mensal:'}
+                        </span>
+                        <span className="text-sm font-medium">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.monthlyPrice)}
+                        </span>
+                    </div>
+                 )
+             })()}
 
              <Separator />
 
