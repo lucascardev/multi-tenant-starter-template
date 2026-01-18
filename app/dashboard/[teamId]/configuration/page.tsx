@@ -46,7 +46,9 @@ import {
     X,
     Loader2,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    Download,
+    Upload
 } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import React, {
@@ -160,7 +162,87 @@ export default function AiConfigurationPage() {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const debouncedFormData = useDebounce(instructionFormData, 2000); // 2 segundos de inatividade
     const debouncedPersonaDetails = useDebounce(personaDetails, 2000);
+
     const lastSavedData = useRef<string>(""); // Para evitar salvar se não mudou
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // --- EXPORT/IMPORT LOGIC ---
+    const handleExportPersona = (persona: PersonaFromAPI) => {
+        try {
+            const exportData = {
+                version: "1.0",
+                exportedAt: new Date().toISOString(),
+                persona: {
+                    personaDisplayName: persona.persona_name,
+                    instruction: persona.instruction,
+                    ownerPhones: persona.owner_phones || [],
+                    ownerToolInstruction: persona.owner_tool_instruction,
+                    ownerAlertInstruction: persona.owner_alert_instruction
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `persona_${persona.persona_name.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success("Persona exportada com sucesso!");
+        } catch (error) {
+            console.error("Erro ao exportar persona:", error);
+            toast.error("Erro ao gerar arquivo de exportação.");
+        }
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target?.result as string;
+                const importData = JSON.parse(content);
+                
+                if (!importData.persona || !importData.persona.instruction) {
+                    throw new Error("Formato de arquivo inválido.");
+                }
+
+                // Preenche o form com os dados importados
+                setPersonaDetails(prev => ({
+                    ...prev,
+                    personaDisplayName: importData.persona.personaDisplayName || prev.personaDisplayName,
+                    ownerPhones: importData.persona.ownerPhones || [],
+                    ownerToolInstruction: importData.persona.ownerToolInstruction || '',
+                    ownerAlertInstruction: importData.persona.ownerAlertInstruction || ''
+                }));
+
+                setInstructionFormData(importData.persona.instruction);
+                
+                // Abre o modal se não estiver aberto
+                if (!showFormDialog) {
+                    // Se for importação "limpa", reseta o ID para criar nova
+                    setEditingPersona(null); 
+                    setShowFormDialog(true);
+                }
+
+                toast.success("Configuração importada! Revise e salve.");
+            } catch (error) {
+                console.error("Erro ao importar:", error);
+                toast.error("Erro ao ler arquivo. Verifique se é um backup válido.");
+            }
+        };
+        reader.readAsText(file);
+        // Reset input
+        event.target.value = '';
+    };
 
 
 	const fetchPersonasAndSubscription = useCallback(async () => {
@@ -838,8 +920,8 @@ export default function AiConfigurationPage() {
 										{Object.keys(apiTemplates).length > 0 ? (
                                             Object.entries(apiTemplates).map(([key, template]) => (
                                                 <SelectItem key={key} value={key}>
-                                                    {/* Tenta usar o nome formatado da API se disponível (mas aqui temos só a instrução)
-                                                        Vamos formatar a chave mesmo */}
+                                                    {/* Tenta usar o nome formatado da API se disponível (but here we only have the instruction)
+                                                        Let's format the key itself */}
                                                     {key === 'DENTIST' ? 'Clínica Odontológica' :
                                                      key === 'GYM' ? 'Academia' :
                                                      key === 'RESTAURANT' ? 'Restaurante' :
@@ -848,7 +930,7 @@ export default function AiConfigurationPage() {
                                                 </SelectItem>
                                             ))
                                         ) : (
-                                            /* Fallback para hardcoded se API falhar */
+                                            /* Fallback to hardcoded if API fails */
                                             Object.entries(personaTemplates).map(([key, template]) => (
                                                 <SelectItem key={key} value={key}>
                                                     {template.aiName

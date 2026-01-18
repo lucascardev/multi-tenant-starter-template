@@ -481,6 +481,20 @@ export default function TeamDashboardPage() { // Renomeado para clareza
                         <p className="text-xs text-muted-foreground">Dê exemplos de diálogo na Persona.</p>
                         </div>
                 </div>
+                <div className="flex gap-3 items-start">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500 mt-1 shrink-0" />
+                        <div>
+                        <p className="text-sm font-medium">Faça Backups</p>
+                        <p className="text-xs text-muted-foreground">Exporte suas personas regularmente.</p>
+                        </div>
+                </div>
+                <div className="flex gap-3 items-start">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500 mt-1 shrink-0" />
+                        <div>
+                        <p className="text-sm font-medium">Calendário</p>
+                        <p className="text-xs text-muted-foreground">Revise as regras em "Integrações".</p>
+                        </div>
+                </div>
             </CardContent>
         </Card>
 
