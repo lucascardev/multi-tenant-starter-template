@@ -61,6 +61,8 @@ import React, {
 } from 'react'
 import { toast } from 'sonner'
 import { useDebounce } from '@/hooks/use-debounce'
+import AES from 'crypto-js/aes'
+import encUtf8 from 'crypto-js/enc-utf8'
 
 // Adicionado cn
 
@@ -167,10 +169,25 @@ export default function AiConfigurationPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // --- EXPORT/IMPORT LOGIC ---
-    const handleExportPersona = (persona: PersonaFromAPI) => {
+    const handleExportPersona = async (persona: PersonaFromAPI) => {
         try {
+            // 1. Get Encryption Key from API
+            const keyRes = await apiClient.get('/client/backup-key');
+            const secretKey = keyRes.data.key;
+
+            if (!secretKey) throw new Error("Chave de criptografia não disponível.");
+        
+            // 2. Fetch Google Calendar Config (Best Effort)
+            let googleConfig = null;
+            try {
+                const googleRes = await apiClient.get('/integrations/google/config');
+                googleConfig = googleRes.data;
+            } catch (e) {
+                console.warn("Could not fetch google config for backup", e);
+            }
+
             const exportData = {
-                version: "1.0",
+                version: "1.1", // Bump version
                 exportedAt: new Date().toISOString(),
                 persona: {
                     personaDisplayName: persona.persona_name,
@@ -178,19 +195,25 @@ export default function AiConfigurationPage() {
                     ownerPhones: persona.owner_phones || [],
                     ownerToolInstruction: persona.owner_tool_instruction,
                     ownerAlertInstruction: persona.owner_alert_instruction
-                }
+                },
+                googleConfig: googleConfig // Include in backup
             };
             
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const jsonString = JSON.stringify(exportData, null, 2);
+            const encrypted = AES.encrypt(jsonString, secretKey).toString();
+
+            const blob = new Blob([encrypted], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `persona_${persona.persona_name.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.json`;
+            // Use .enc extension to denote encrypted content, or .json with encrypted content?
+            // User said "encrypted file". A custom extension is safer.
+            a.download = `persona_${persona.persona_name.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.clara-backup`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            toast.success("Persona exportada com sucesso!");
+            toast.success("Persona exportada (encriptada) com sucesso!");
         } catch (error) {
             console.error("Erro ao exportar persona:", error);
             toast.error("Erro ao gerar arquivo de exportação.");
@@ -201,15 +224,28 @@ export default function AiConfigurationPage() {
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
-                const content = e.target?.result as string;
-                const importData = JSON.parse(content);
+                const encryptedContent = e.target?.result as string;
+                
+                // 1. Get Encryption Key
+                const keyRes = await apiClient.get('/client/backup-key');
+                const secretKey = keyRes.data.key;
+
+                if (!secretKey) throw new Error("Chave de criptografia não disponível.");
+
+                // 2. Decrypt
+                const bytes = AES.decrypt(encryptedContent, secretKey);
+                const decryptedString = bytes.toString(encUtf8);
+
+                if (!decryptedString) throw new Error("Falha na decriptação. Arquivo inválido ou chave incorreta.");
+
+                const importData = JSON.parse(decryptedString);
                 
                 if (!importData.persona || !importData.persona.instruction) {
                     throw new Error("Formato de arquivo inválido.");
@@ -225,6 +261,18 @@ export default function AiConfigurationPage() {
                 }));
 
                 setInstructionFormData(importData.persona.instruction);
+                // Restore Google Config if present
+                if (importData.googleConfig) {
+                    try {
+                        // Only sync non-null/undefined fields
+                        const { errorMessage, email, ...configToRestore } = importData.googleConfig;
+                        await apiClient.post('/integrations/google/config', configToRestore);
+                        toast.success("Configurações de Calendário restauradas.");
+                    } catch (e) {
+                        console.error("Erro ao restaurar Google Config", e);
+                        toast.error("Falha ao restaurar configurações de calendário.");
+                    }
+                }
                 
                 // Abre o modal se não estiver aberto
                 if (!showFormDialog) {
@@ -233,10 +281,10 @@ export default function AiConfigurationPage() {
                     setShowFormDialog(true);
                 }
 
-                toast.success("Configuração importada! Revise e salve.");
+                toast.success("Backup importado e decriptado com sucesso! (Persona + Calendário)");
             } catch (error) {
                 console.error("Erro ao importar:", error);
-                toast.error("Erro ao ler arquivo. Verifique se é um backup válido.");
+                toast.error("Erro ao ler backup. Arquivo corrompido ou inválido.");
             }
         };
         reader.readAsText(file);
@@ -669,7 +717,7 @@ export default function AiConfigurationPage() {
                         type="file" 
                         ref={fileInputRef} 
                         style={{ display: 'none' }} 
-                        accept=".json" 
+                        accept=".clara-backup,.json" 
                         onChange={handleFileChange} 
                     />
                      <Button variant="outline" onClick={handleImportClick}>
