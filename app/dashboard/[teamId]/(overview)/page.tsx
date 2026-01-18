@@ -385,7 +385,7 @@ export default function TeamDashboardPage() { // Renomeado para clareza
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                     const message = encodeURIComponent("Olá, gostaria de aumentar meu limite de mensagens na Clara.")
-                    window.open(`https://wa.me/5511999999999?text=${message}`, '_blank')
+                    window.open(`https://wa.me/5571992931330?text=${message}`, '_blank')
                 }}
             >
                 <ExternalLink className="mr-2 h-4 w-4" />
