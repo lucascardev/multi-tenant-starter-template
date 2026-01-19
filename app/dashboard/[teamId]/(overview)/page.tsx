@@ -251,6 +251,13 @@ export default function TeamDashboardPage() {
   useEffect(() => {
     if (team) {
       fetchDashboardData();
+
+      // Polling for Hot Reload (every 10 seconds)
+      const intervalId = setInterval(() => {
+          fetchDashboardData();
+      }, 10000);
+
+      return () => clearInterval(intervalId);
     }
   }, [team, fetchDashboardData]);
 

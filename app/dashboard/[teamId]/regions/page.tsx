@@ -227,21 +227,28 @@ export default function WhatsAppInstancesPage() {
 		}
 	}, [user, team, fetchAllData]) // fetchAllData agora está no array de dependências
 
-	// Polling para a lista completa de instâncias
+	// Adaptive Polling for Hot Reload
 	useEffect(() => {
-		if (!user || !team) return // Não inicia o polling se user/team não estiverem prontos
+		if (!user || !team) return
 
-		// logger.info("Iniciando polling da lista de instâncias...");
+		// Determine polling rate based on instance states
+        // "Hot" states requiring fast updates: connecting, needs_qr, pending_creation, resetting
+		const hasActiveOperations = instances.some(inst => 
+            ['connecting', 'pending_creation', 'restarting', 'disconnecting'].includes(inst.status) ||
+            (inst.status === 'needs_qr' && !inst.qr_code) // Needs QR but hasn't arrived yet
+        );
+        
+        // Standard: 10s, Active: 2s
+        const pollingInterval = hasActiveOperations ? 2000 : 10000;
+
+		// logger.info(`Polling adaptativo: ${pollingInterval}ms (ActiveOps: ${hasActiveOperations})`);
+
 		const intervalId = setInterval(() => {
-			// logger.info("Polling: buscando lista de instâncias...");
-			fetchAllData(false) // Não mostra o spinner global para polling de fundo
-		}, LIST_POLLING_INTERVAL)
+			fetchAllData(false) 
+		}, pollingInterval)
 
-		return () => {
-			// logger.info("Limpando polling da lista de instâncias.");
-			clearInterval(intervalId)
-		}
-	}, [user, team, fetchAllData]) // Re-inicia o polling se user/team/fetchAllData mudar
+		return () => clearInterval(intervalId)
+	}, [user, team, fetchAllData, instances]) // Re-run effect when 'instances' changes (to adapt rate)
 
 	// Polling focado no QR Code quando o dialog está aberto
 	useEffect(() => {
