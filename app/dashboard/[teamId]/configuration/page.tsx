@@ -683,7 +683,8 @@ export default function AiConfigurationPage() {
 			fetchPersonasAndSubscription()
             setPersonaToDelete(null); // Close dialog manually on success
 		} catch (error: any) {
-			logger.error('Erro ao deletar persona:', error)
+			console.error('CRITICAL ERROR DELETING PERSONA:', error); // Explicit log for user
+            logger.error('Erro ao deletar persona:', error)
 			toast.error(
 				error.response?.data?.message || 'Falha ao deletar persona.'
 			)
