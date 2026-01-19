@@ -319,9 +319,11 @@ export default function TeamDashboardPage() { // Renomeado para clareza
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-                {stats ? `${stats.activeInstances}/${stats.instancesCount}` : '-'}
+                {stats ? `${stats.instancesCount}/${stats.maxInstances}` : '-'}
             </div>
-            <p className="text-xs text-muted-foreground">Conectadas / Total Criadas</p>
+            <p className="text-xs text-muted-foreground">
+                {stats ? `${stats.activeInstances} Conectada(s) ao WhatsApp` : 'Carregando...'}
+            </p>
           </CardContent>
         </Card>
         <Card>
