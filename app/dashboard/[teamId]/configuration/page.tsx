@@ -162,6 +162,7 @@ export default function AiConfigurationPage() {
     
     // Delete Confirmation State
     const [personaToDelete, setPersonaToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [newOwnerPhone, setNewOwnerPhone] = useState('') // Input temporário
 
@@ -671,20 +672,25 @@ export default function AiConfigurationPage() {
         setPersonaToDelete(personaId);
     }
     
-    const confirmDelete = async () => {
+    const confirmDelete = async (e: React.MouseEvent) => {
+        e.preventDefault(); // Prevent auto-close if using AlertDialogAction
         if (!personaToDelete) return;
 
+        setIsDeleting(true);
 		try {
 			await apiClient.delete(`/personas/${personaToDelete}`)
 			toast.success('Persona deletada com sucesso.')
 			fetchPersonasAndSubscription()
-            setPersonaToDelete(null); // Close dialog
+            setPersonaToDelete(null); // Close dialog manually on success
 		} catch (error: any) {
 			logger.error('Erro ao deletar persona:', error)
 			toast.error(
 				error.response?.data?.message || 'Falha ao deletar persona.'
 			)
-		}
+            // Do NOT close dialog on error, so user can retry or see error
+		} finally {
+            setIsDeleting(false);
+        }
 	}
 
 	if (isLoading) {
@@ -840,10 +846,10 @@ export default function AiConfigurationPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Sim, deletar persona
-                        </AlertDialogAction>
+                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                        <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+                            {isDeleting ? "Deletando..." : "Sim, deletar persona"}
+                        </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
