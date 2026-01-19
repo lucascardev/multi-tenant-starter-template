@@ -137,15 +137,18 @@ export default function TeamDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (showLoading = true) => {
     if (!team) {
         logger.warn("fetchDashboardData chamado sem 'team' definido.");
-        setIsLoading(false);
+        if (showLoading) setIsLoading(false);
         return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    if (showLoading) {
+        setIsLoading(true);
+        setError(null); // Reset error specifically when we are doing a full load
+    }
+    
     try {
       const [instancesRes, personasRes, subInfoRes, clientConfigRes] = await Promise.all([
         apiClient.get('/instances'),
@@ -199,62 +202,51 @@ export default function TeamDashboardPage() {
       
       if (process.env.NODE_ENV === 'development') {
           logger.warn("Usando MOCK DATA para o dashboard devido a erro na API.");
-          
+          // ... Mock Data Logic (kept concise for replacement)
           setStats({
             activeInstances: MOCK_DASHBOARD_DATA.instances.filter((inst: any) => inst.status === 'connected').length,
             totalPersonas: MOCK_DASHBOARD_DATA.personas.length,
             activeSubscriptionPlan: MOCK_DASHBOARD_DATA.subscription.plan_name,
             clientBusinessName: MOCK_DASHBOARD_DATA.clientConfig.business_name,
-            
-            instancesCount: 1,
-            maxInstances: 2,
-            personasCount: 1,
-            maxPersonas: 5,
-
+            instancesCount: 1, maxInstances: 2, personasCount: 1, maxPersonas: 5,
             messagesSent: MOCK_DASHBOARD_DATA.usage_stats.messages_sent,
             maxMessages: MOCK_DASHBOARD_DATA.limits.max_messages,
             graceMessages: MOCK_DASHBOARD_DATA.limits.grace_messages,
-
             customersAnswered: MOCK_DASHBOARD_DATA.usage_stats.customers_answered,
             maxCustomers: MOCK_DASHBOARD_DATA.limits.max_customers,
             graceCustomers: MOCK_DASHBOARD_DATA.limits.grace_customers,
-
             periodStart: MOCK_DASHBOARD_DATA.period.current_period_start,
             periodEnd: MOCK_DASHBOARD_DATA.period.current_period_end,
-
             monthlyPrice: MOCK_DASHBOARD_DATA.period.price_monthly,
             price: MOCK_DASHBOARD_DATA.period.price,
             interval: MOCK_DASHBOARD_DATA.period.interval as 'month' | 'year',
           });
-
-          setInstanceSummary(
-              MOCK_DASHBOARD_DATA.instances.map((inst: any) => ({
-                  id: inst.id,
-                  instance_name: inst.instance_name,
-                  status: inst.status,
-                  persona_name: 'Persona Mock',
-                  last_connection: inst.last_connection_at || 'Nunca',
-                  messages_sent: inst.messages_sent,
-                  clients_count: inst.clients_count
-              }))
-          );
+          setInstanceSummary(MOCK_DASHBOARD_DATA.instances.map((inst: any) => ({
+             id: inst.id, instance_name: inst.instance_name, status: inst.status,
+             persona_name: 'Persona Mock', last_connection: inst.last_connection_at || 'Nunca',
+             messages_sent: inst.messages_sent, clients_count: inst.clients_count
+          })));
           toast.warning("Usando dados de demonstração (API offline).");
       } else {
-          setError(err.response?.data?.message || "Não foi possível carregar os dados do dashboard.");
-          toast.error(err.response?.data?.message || "Falha ao carregar dados do dashboard.");
+          // Silent refresh shouldn't show global error UI, just toaster
+          if (showLoading) {
+             setError(err.response?.data?.message || "Não foi possível carregar os dados do dashboard.");
+          }
+          // But toast is fine
+          // toast.error(err.response?.data?.message || "Falha ao carregar dados do dashboard."); // Maybe annoyning on poll
       }
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [team]);
 
   useEffect(() => {
     if (team) {
-      fetchDashboardData();
+      fetchDashboardData(true); // Initial load with skeleton
 
       // Polling for Hot Reload (every 10 seconds)
       const intervalId = setInterval(() => {
-          fetchDashboardData();
+          fetchDashboardData(false); // Silent reload
       }, 10000);
 
       return () => clearInterval(intervalId);
@@ -301,7 +293,7 @@ export default function TeamDashboardPage() {
             <AlertTriangle className="w-16 h-16 text-destructive mb-4" />
             <h2 className="text-xl font-semibold text-destructive">Erro ao Carregar Dashboard</h2>
             <p className="text-muted-foreground">{error}</p>
-            <Button onClick={fetchDashboardData} className="mt-4">Tentar Novamente</Button>
+            <Button onClick={() => fetchDashboardData(true)} className="mt-4">Tentar Novamente</Button>
         </div>
     );
   }
