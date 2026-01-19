@@ -58,6 +58,10 @@ interface InstanceStatusSummary {
     id: string;
     instance_name: string;
     status: string;
+    model: string;
+    last_connection: string;
+    messages_sent: number;
+    clients_count: number;
 }
 
 const MOCK_DASHBOARD_DATA = {
@@ -66,41 +70,63 @@ const MOCK_DASHBOARD_DATA = {
             id: 'mock-inst-1',
             instance_name: 'WhatsApp Principal',
             status: 'connected',
+            last_connection_at: new Date().toISOString(),
+            messages_sent: 150,
+            clients_count: 45
         },
         {
             id: 'mock-inst-2',
             instance_name: 'WhatsApp Secundário',
             status: 'disconnected',
+            last_connection_at: null,
+            messages_sent: 0,
+            clients_count: 0
         }
     ],
     personas: [
-        { id: 'mock-persona-1', name: 'Atendente Clara' }
+        { id: 'mock-persona-1', name: 'Atendente Clara', model: 'gemini-1.5-flash' }
     ],
     subscription: {
         plan_name: 'Plano Básico (Mock)',
+        max_instances_count: 2,
+        max_personas_count: 5,
+        max_messages_count: 1000,
+        grace_messages_count: 500,
+        max_customers_count: 200,
+        grace_customers_count: 50,
+        current_period_start: new Date(Date.now() - 86400000 * 15).toISOString(),
+        current_period_end: new Date(Date.now() + 86400000 * 15).toISOString(),
+        price_monthly: 199.90,
+        price: 199.90,
+        interval: 'month',
+         usage_stats: {
+            messages_sent: 850,
+            customers_answered: 120
+        }
     },
     clientConfig: {
-        messages_sent: 1250,
-        business_name: 'Clínica Modelo (Dev)'
+        business_name: 'Clínica Modelo (Dev)',
+        connected_instances_count: 1,
+        instances_count: 2,
+        personas_count: 1,
+        messages_sent: 1250
     },
-    // Mock Extended
-    usage_stats: {
-        messages_sent: 850,
-        customers_answered: 120
-    },
-    limits: {
+    limits: { // Legacy structure support
         max_messages: 1000,
         grace_messages: 500,
         max_customers: 200,
         grace_customers: 50
     },
     period: {
-        current_period_start: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 days ago
-        current_period_end: new Date(Date.now() + 86400000 * 15).toISOString(), // 15 days left
-
+        current_period_start: new Date(Date.now() - 86400000 * 15).toISOString(),
+        current_period_end: new Date(Date.now() + 86400000 * 15).toISOString(),
         price_monthly: 199.90,
         price: 199.90,
         interval: 'month'
+    },
+    usage_stats: {
+        messages_sent: 850,
+        customers_answered: 120
     }
 };
 
@@ -110,13 +136,9 @@ const calculateProjection = (current: number, totalDays: number = 30, daysPassed
     return Math.floor(dailyAvg * totalDays);
 }
 
-export default function TeamDashboardPage() { // Renomeado para clareza
-  const user = useUser({ or: "redirect" }); // or:redirect garante que user exista se renderizar
+export default function TeamDashboardPage() {
+  const user = useUser({ or: "redirect" });
   const params = useParams<{ teamId: string }>();
-  // const router = useRouter(); // Para possível redirecionamento manual se necessário
-
-  // useTeam pode retornar null se o teamId for inválido ou o usuário não tiver acesso.
-  // O Layout.tsx já tem lógica para redirecionar se !team.
   const team = user?.useTeam(params.teamId);
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -125,21 +147,15 @@ export default function TeamDashboardPage() { // Renomeado para clareza
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
-    // Não precisa checar !user ou !team aqui se o layout e useUser({or: "redirect"}) já trataram.
-    // No entanto, se team puder ser null brevemente, adicione a checagem.
-    if (!team) { // Adicionada checagem para team, pois useTeam pode retornar null
+    if (!team) {
         logger.warn("fetchDashboardData chamado sem 'team' definido.");
-        setIsLoading(false); // Para o loading se o time não estiver disponível
-        // O layout já deve ter redirecionado, mas podemos forçar aqui também se necessário
-        // router.push('/dashboard'); 
+        setIsLoading(false);
         return;
     }
 
     setIsLoading(true);
     setError(null);
     try {
-      // As chamadas de API usarão o token de autenticação do usuário (via interceptor do Axios)
-      // O backend identificará o cliente com base nesse token.
       const [instancesRes, personasRes, subInfoRes, clientConfigRes] = await Promise.all([
         apiClient.get('/instances'),
         apiClient.get('/personas'),
@@ -149,45 +165,40 @@ export default function TeamDashboardPage() { // Renomeado para clareza
 
       const instancesData = instancesRes.data.instances || [];
       const personasData = personasRes.data.personas || [];
-      const subData = subInfoRes.data; // API deve retornar um objeto, mesmo que com defaults
+      const subData = subInfoRes.data;
       const clientConfigData = clientConfigRes.data;
 
       setStats({
         activeInstances: clientConfigData.connected_instances_count ?? instancesData.filter((inst: any) => inst.status === 'connected').length,
         maxInstances: subData?.max_instances_count ?? 1,
-        
-        // Populate the missing required fields
         instancesCount: clientConfigData.instances_count ?? instancesData.length,
         personasCount: clientConfigData.personas_count ?? personasData.length,
-
         totalPersonas: clientConfigData.personas_count ?? personasData.length,
         maxPersonas: subData?.max_personas_count ?? 1,
-        
         activeSubscriptionPlan: subData?.plan_name || "Plano não identificado",
         clientBusinessName: team.displayName,
-        
-        // New Data Mapping
         messagesSent: subData?.usage_stats?.messages_sent ?? (clientConfigData.messages_sent ?? 0),
         maxMessages: subData?.max_messages_count ?? 1000,
         graceMessages: subData?.grace_messages_count ?? 0,
-
         customersAnswered: subData?.usage_stats?.customers_answered ?? 0,
-        maxCustomers: subData?.max_customers_count ?? 100, // Default fallback
+        maxCustomers: subData?.max_customers_count ?? 100,
         graceCustomers: subData?.grace_customers_count ?? 0,
-
         periodStart: subData?.current_period_start || null,
         periodEnd: subData?.current_period_end || null,
-
         monthlyPrice: subData?.price_monthly || 0,
         price: subData?.price || subData?.price_monthly || 0,
         interval: subData?.interval || 'month',
       });
 
       setInstanceSummary(
-          instancesData.slice(0, 3).map((inst: any) => ({
+          instancesData.slice(0, 10).map((inst: any) => ({
               id: inst.id,
               instance_name: inst.instance_name,
-              status: inst.status
+              status: inst.status,
+              model: inst.persona?.model || 'Padrão',
+              last_connection: inst.last_connection_at ? new Date(inst.last_connection_at).toLocaleString('pt-BR') : 'Nunca',
+              messages_sent: inst.messages_sent || 0,
+              clients_count: inst.clients_count || 0
           }))
       );
       logger.info("Dados do dashboard carregados:", { stats, instanceSummary });
@@ -433,11 +444,36 @@ export default function TeamDashboardPage() { // Renomeado para clareza
             <div className="space-y-3">
                 {instanceSummary.map(inst => (
                     <Card key={inst.id}>
-                        <CardContent className="p-4 flex justify-between items-center">
-                            <p className="font-medium">{inst.instance_name}</p>
-                            <Badge variant={getStatusBadgeVariant(inst.status)}>
-                                {inst.status.replace("_", " ").toUpperCase()}
-                            </Badge>
+                        <CardContent className="p-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <p className="font-semibold text-base">{inst.instance_name}</p>
+                                    <p className="text-xs text-muted-foreground">{inst.model}</p>
+                                </div>
+                                <Badge variant={getStatusBadgeVariant(inst.status)}>
+                                    {inst.status.replace("_", " ").toUpperCase()}
+                                </Badge>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-2">
+                                <div className="flex flex-col bg-muted/30 p-2 rounded">
+                                    <span className="text-muted-foreground text-xs uppercase tracking-wide mb-1">Conexão</span>
+                                    <span className="font-medium text-xs truncate" title={inst.last_connection}>
+                                        {inst.last_connection}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col bg-muted/30 p-2 rounded">
+                                    <span className="text-muted-foreground text-xs uppercase tracking-wide mb-1">Mensagens</span>
+                                    <span className="font-medium">{inst.messages_sent}</span>
+                                </div>
+                                <div className="flex flex-col bg-muted/30 p-2 rounded">
+                                    <span className="text-muted-foreground text-xs uppercase tracking-wide mb-1">Clientes</span>
+                                    <span className="font-medium">{inst.clients_count}</span>
+                                </div>
+                                <div className="flex flex-col bg-muted/30 p-2 rounded items-center justify-center text-center">
+                                    <span className="text-green-600 text-xs font-semibold">Online</span>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
                 ))}
