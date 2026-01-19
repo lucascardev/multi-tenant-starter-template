@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, Trash2, Shield, Key, ArrowLeft } from "lucide-react";
+import { Copy, Trash2, Shield, Key, ArrowLeft, Users as UsersIcon } from "lucide-react";
 
 interface AdminUser {
   id: string;
@@ -51,6 +51,14 @@ export default function AdminDashboardPage() {
   const [superAdmin, setSuperAdmin] = useState<string | null>(null);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [loadingAdmins, setLoadingAdmins] = useState(false);
+
+  // State for User Management
+  const [searchEmail, setSearchEmail] = useState("");
+  const [searchedUser, setSearchedUser] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(false);
+  const [usageMessages, setUsageMessages] = useState(0);
+  const [usageTalking, setUsageTalking] = useState(0);
+  const [limitsOverride, setLimitsOverride] = useState<any>({});
 
   // General Access State
   const [accessDenied, setAccessDenied] = useState(false);
@@ -111,6 +119,49 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleSearchUser = async () => {
+    if(!searchEmail) return;
+    setLoadingUser(true);
+    setSearchedUser(null);
+    try {
+        const res = await apiClient.get(`/admin/clients/${searchEmail}`);
+        const data = res.data;
+        setSearchedUser(data);
+        
+        // Init form states
+        setUsageMessages(data.client.messages_sent || 0);
+        setUsageTalking(data.client.customers_ansewered || 0); // Typo in DB 'customers_ansewered'
+        
+        const sub = data.activeSubscription;
+        if(sub) {
+            setLimitsOverride({
+                max_messages: sub.max_messages_override,
+                max_customers: sub.max_customers_override,
+                max_personas: sub.max_personas_override,
+                max_instances: sub.max_instances_override
+            });
+        } else {
+             setLimitsOverride({});
+        }
+
+    } catch (error: any) {
+        toast.error(error.response?.data?.message || "User not found.");
+    } finally {
+        setLoadingUser(false);
+    }
+  };
+
+  const handleUpdateSubscription = async (payload: any) => {
+      if(!searchedUser) return;
+      try {
+          await apiClient.patch(`/admin/users/${searchedUser.client.email}/subscription`, payload);
+          toast.success("Subscription updated successfully.");
+          handleSearchUser(); // Refresh data
+      } catch (error: any) {
+          toast.error(error.response?.data?.message || "Failed to update subscription.");
+      }
+  };
+
   const handleRemoveAdmin = async (email: string) => {
     if (!confirm(`Are you sure you want to remove ${email}?`)) return;
     try {
@@ -160,6 +211,9 @@ export default function AdminDashboardPage() {
           </TabsTrigger>
           <TabsTrigger value="admins" className="flex items-center gap-2">
             <Shield className="h-4 w-4" /> Access Management
+          </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <UsersIcon className="h-4 w-4" /> Manage Users
           </TabsTrigger>
         </TabsList>
 
@@ -322,7 +376,114 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+
+        {/* --- User Management Tab --- */}
+        <TabsContent value="users">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Gerenciar Usuários</CardTitle>
+                    <CardDescription>Busque um usuário por email para editar assinatura e limites.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="flex gap-2">
+                        <Input 
+                            placeholder="Email do usuário (ex: cliente@email.com)" 
+                            value={searchEmail}
+                            onChange={(e) => setSearchEmail(e.target.value)}
+                            className="max-w-md"
+                        />
+                        <Button onClick={handleSearchUser} disabled={loadingUser}>
+                            {loadingUser ? "Buscando..." : "Buscar Usuário"}
+                        </Button>
+                    </div>
+
+                    {searchedUser && (
+                        <div className="space-y-6 border rounded-md p-4 bg-muted/20">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h3 className="font-bold text-lg">{searchedUser.client.business_name}</h3>
+                                    <p className="text-sm text-muted-foreground">{searchedUser.client.email}</p>
+                                    <p className="text-sm">ID: <span className="font-mono text-xs">{searchedUser.client.client_id}</span></p>
+                                    <p className="text-sm">Criado em: {new Date(searchedUser.client.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <h4 className="font-semibold">Assinatura Atual</h4>
+                                    {searchedUser.activeSubscription ? (
+                                        <>
+                                            <p className="text-sm">Plano: {searchedUser.activeSubscription.subscription.plan_name}</p>
+                                            <p className="text-sm">Status: <span className="uppercase text-xs font-bold">{searchedUser.activeSubscription.status}</span></p>
+                                            <p className="text-sm">Expira em: {searchedUser.activeSubscription.end_date ? new Date(searchedUser.activeSubscription.end_date).toLocaleDateString() : 'N/A'}</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-red-500">Nenhuma assinatura ativa encontrada.</p>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Usage Logic */}
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold flex items-center gap-2">Consumo Atual</h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-medium">Mensagens Enviadas</label>
+                                            <Input type="number" value={usageMessages} onChange={(e) => setUsageMessages(Number(e.target.value))} />
+                                        </div>
+                                         <div className="space-y-1">
+                                            <label className="text-xs font-medium">Clientes Atendidos</label>
+                                            <Input type="number" value={usageTalking} onChange={(e) => setUsageTalking(Number(e.target.value))} />
+                                        </div>
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => handleUpdateSubscription({ set_usage_messages: usageMessages, set_usage_talking: usageTalking })}>
+                                        Atualizar Consumo Manualmente
+                                    </Button>
+                                </div>
+
+                                {/* Limits Override */}
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold flex items-center gap-2">Override de Limites (Personalizado)</h4>
+                                     <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-medium">Max Mensagens</label>
+                                            <Input type="number" placeholder="Default" value={limitsOverride.max_messages || ''} onChange={(e) => setLimitsOverride({...limitsOverride, max_messages: Number(e.target.value)})} />
+                                        </div>
+                                         <div className="space-y-1">
+                                            <label className="text-xs font-medium">Max Clientes</label>
+                                            <Input type="number" placeholder="Default" value={limitsOverride.max_customers || ''} onChange={(e) => setLimitsOverride({...limitsOverride, max_customers: Number(e.target.value)})} />
+                                        </div>
+                                         <div className="space-y-1">
+                                            <label className="text-xs font-medium">Max Personas</label>
+                                            <Input type="number" placeholder="Default" value={limitsOverride.max_personas || ''} onChange={(e) => setLimitsOverride({...limitsOverride, max_personas: Number(e.target.value)})} />
+                                        </div>
+                                         <div className="space-y-1">
+                                            <label className="text-xs font-medium">Max Instâncias</label>
+                                            <Input type="number" placeholder="Default" value={limitsOverride.max_instances || ''} onChange={(e) => setLimitsOverride({...limitsOverride, max_instances: Number(e.target.value)})} />
+                                        </div>
+                                    </div>
+                                    <Button size="sm" onClick={() => handleUpdateSubscription({ override_limits: limitsOverride })}>
+                                        Salvar Novos Limites
+                                    </Button>
+                                </div>
+                            </div>
+
+                             <div className="border-t pt-4 space-y-4">
+                                <h4 className="font-semibold">Ações Rápidas</h4>
+                                <div className="flex gap-4">
+                                    <Button onClick={() => handleUpdateSubscription({ add_days: 30 })}>
+                                        +30 Dias de Validade
+                                    </Button>
+                                     <Button variant="secondary" onClick={() => handleUpdateSubscription({ renew: true })}>
+                                        Renovar Ciclo (Resetar Datas & Uso)
+                                    </Button>
+                                </div>
+                             </div>
+
+                        </div>
+                    )}
+
+                </CardContent>
+            </Card>
+        </TabsContent>
     </div>
   );
 }
