@@ -156,6 +156,10 @@ export default function TeamDashboardPage() { // Renomeado para clareza
         activeInstances: clientConfigData.instances_count ?? instancesData.filter((inst: any) => inst.status === 'connected').length,
         maxInstances: subData?.max_instances_count ?? 1,
         
+        // Populate the missing required fields
+        instancesCount: clientConfigData.instances_count ?? instancesData.filter((inst: any) => inst.status === 'connected').length,
+        personasCount: clientConfigData.personas_count ?? personasData.length,
+
         totalPersonas: clientConfigData.personas_count ?? personasData.length,
         maxPersonas: subData?.max_personas_count ?? 1,
         
