@@ -153,11 +153,11 @@ export default function TeamDashboardPage() { // Renomeado para clareza
       const clientConfigData = clientConfigRes.data;
 
       setStats({
-        activeInstances: clientConfigData.instances_count ?? instancesData.filter((inst: any) => inst.status === 'connected').length,
+        activeInstances: clientConfigData.connected_instances_count ?? instancesData.filter((inst: any) => inst.status === 'connected').length,
         maxInstances: subData?.max_instances_count ?? 1,
         
         // Populate the missing required fields
-        instancesCount: clientConfigData.instances_count ?? instancesData.filter((inst: any) => inst.status === 'connected').length,
+        instancesCount: clientConfigData.instances_count ?? instancesData.length,
         personasCount: clientConfigData.personas_count ?? personasData.length,
 
         totalPersonas: clientConfigData.personas_count ?? personasData.length,
@@ -319,9 +319,9 @@ export default function TeamDashboardPage() { // Renomeado para clareza
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-                {stats ? `${stats.instancesCount}/${stats.maxInstances}` : '-'}
+                {stats ? `${stats.activeInstances}/${stats.instancesCount}` : '-'}
             </div>
-            <p className="text-xs text-muted-foreground">Conectadas ao WhatsApp</p>
+            <p className="text-xs text-muted-foreground">Conectadas / Total Criadas</p>
           </CardContent>
         </Card>
         <Card>
