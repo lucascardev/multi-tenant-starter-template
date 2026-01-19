@@ -14,6 +14,17 @@ import {
 	DialogTrigger,
 	DialogClose,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -148,6 +159,9 @@ export default function AiConfigurationPage() {
     const [phoneNumberWhitelist, setPhoneNumberWhitelist] = useState<string[]>([]);
     const [newWhiteListPhone, setNewWhiteListPhone] = useState('');
     const [isSavingWhitelist, setIsSavingWhitelist] = useState(false);
+    
+    // Delete Confirmation State
+    const [personaToDelete, setPersonaToDelete] = useState<string | null>(null);
 
     const [newOwnerPhone, setNewOwnerPhone] = useState('') // Input temporário
 
@@ -653,18 +667,18 @@ export default function AiConfigurationPage() {
         await performSave(false);
 	}
 
-	const handleDelete = async (personaId: string) => {
-		if (
-			!confirm(
-				'Tem certeza que deseja deletar esta persona? Instâncias associadas podem precisar ser reconfiguradas.'
-			)
-		) {
-			return
-		}
+	const handleDeleteClick = (personaId: string) => {
+        setPersonaToDelete(personaId);
+    }
+    
+    const confirmDelete = async () => {
+        if (!personaToDelete) return;
+
 		try {
-			await apiClient.delete(`/personas/${personaId}`)
+			await apiClient.delete(`/personas/${personaToDelete}`)
 			toast.success('Persona deletada com sucesso.')
 			fetchPersonasAndSubscription()
+            setPersonaToDelete(null); // Close dialog
 		} catch (error: any) {
 			logger.error('Erro ao deletar persona:', error)
 			toast.error(
@@ -808,7 +822,7 @@ export default function AiConfigurationPage() {
                                  <Button variant="outline" size="sm" onClick={() => handleEdit(persona)}>
                                      <Edit3 className="h-4 w-4 mr-1" /> Editar
                                  </Button>
-                                 <Button variant="ghost" size="sm" onClick={() => handleDelete(persona.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                 <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(persona.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                                      <Trash2 className="h-4 w-4" />
                                  </Button>
                              </div>
@@ -816,6 +830,23 @@ export default function AiConfigurationPage() {
                     </Card>
                 ))}
             </div>
+
+            <AlertDialog open={!!personaToDelete} onOpenChange={(open) => !open && setPersonaToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Essa ação não pode ser desfeita. Isso excluirá permanentemente a persona e poderá afetar instâncias que dependem dela.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Sim, deletar persona
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
 			<Dialog
 				open={showFormDialog}
