@@ -32,6 +32,12 @@ interface DashboardStats {
   activeSubscriptionPlan?: string;
   clientBusinessName?: string;
   // New Fields
+  instancesCount: number;
+  maxInstances: number;
+  
+  personasCount: number;
+  maxPersonas: number;
+
   messagesSent: number;
   maxMessages: number;
   graceMessages: number;
@@ -147,8 +153,12 @@ export default function TeamDashboardPage() { // Renomeado para clareza
       const clientConfigData = clientConfigRes.data;
 
       setStats({
-        activeInstances: instancesData.filter((inst: any) => inst.status === 'connected').length,
-        totalPersonas: personasData.length,
+        activeInstances: clientConfigData.instances_count ?? instancesData.filter((inst: any) => inst.status === 'connected').length,
+        maxInstances: subData?.max_instances_count ?? 1,
+        
+        totalPersonas: clientConfigData.personas_count ?? personasData.length,
+        maxPersonas: subData?.max_personas_count ?? 1,
+        
         activeSubscriptionPlan: subData?.plan_name || "Plano não identificado",
         clientBusinessName: team.displayName,
         
@@ -191,6 +201,11 @@ export default function TeamDashboardPage() { // Renomeado para clareza
             activeSubscriptionPlan: MOCK_DASHBOARD_DATA.subscription.plan_name,
             clientBusinessName: MOCK_DASHBOARD_DATA.clientConfig.business_name,
             
+            instancesCount: 1,
+            maxInstances: 2,
+            personasCount: 1,
+            maxPersonas: 5,
+
             messagesSent: MOCK_DASHBOARD_DATA.usage_stats.messages_sent,
             maxMessages: MOCK_DASHBOARD_DATA.limits.max_messages,
             graceMessages: MOCK_DASHBOARD_DATA.limits.grace_messages,
@@ -299,7 +314,9 @@ export default function TeamDashboardPage() { // Renomeado para clareza
             <Locate className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeInstances ?? '-'}</div>
+            <div className="text-2xl font-bold">
+                {stats ? `${stats.instancesCount}/${stats.maxInstances}` : '-'}
+            </div>
             <p className="text-xs text-muted-foreground">Conectadas ao WhatsApp</p>
           </CardContent>
         </Card>
@@ -309,7 +326,9 @@ export default function TeamDashboardPage() { // Renomeado para clareza
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalPersonas ?? '-'}</div>
+            <div className="text-2xl font-bold">
+                {stats ? `${stats.personasCount}/${stats.maxPersonas}` : '-'}
+            </div>
             <p className="text-xs text-muted-foreground">IAs prontas para uso</p>
           </CardContent>
         </Card>
