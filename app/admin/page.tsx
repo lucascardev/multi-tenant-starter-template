@@ -484,6 +484,7 @@ export default function AdminDashboardPage() {
                 </CardContent>
             </Card>
         </TabsContent>
+      </Tabs>
     </div>
   );
 }
