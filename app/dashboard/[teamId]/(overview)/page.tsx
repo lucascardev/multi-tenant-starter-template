@@ -2,16 +2,15 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@stackframe/stack';
-import { useParams, useRouter } from 'next/navigation'; // useRouter pode não ser necessário aqui se o layout já trata
+import { useParams, useRouter } from 'next/navigation';
 import apiClient from '@/lib/axios';
-import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle, MessageSquareOff, Bot, Lightbulb, CheckCircle2, Shield } from 'lucide-react';
+import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle, MessageSquareOff, Bot, Lightbulb, CheckCircle2, Shield, Calendar, CreditCard, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge'; // Para status de instância
-import { toast } from 'sonner'; // Para notificações de erro
-import { Button } from '@/components/ui/button'; // Para botão de tentar novamente
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import { UsageProgressBar } from '@/components/dashboard/usage-progress-bar';
-import { Calendar, CreditCard, ExternalLink } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const logger = console;
@@ -22,34 +21,26 @@ const statusBadgeVariantMap: ReadonlyMap<string, "default" | "secondary" | "dest
     ['needs_qr', 'warning'],
     ['connecting', 'default'],
     ['error', 'destructive'],
-    // Adicione outros status conforme necessário
 ]);
-
 
 interface DashboardStats {
   activeInstances: number;
   totalPersonas: number;
   activeSubscriptionPlan?: string;
   clientBusinessName?: string;
-  // New Fields
   instancesCount: number;
   maxInstances: number;
-  
   personasCount: number;
   maxPersonas: number;
-
   messagesSent: number;
   maxMessages: number;
   graceMessages: number;
-  
   customersAnswered: number;
   maxCustomers: number;
   graceCustomers: number;
-
   periodStart: string | null;
   periodEnd: string | null;
-
-  monthlyPrice: number; // Legacy, keep for safety or remove if unused, but removing might break if backend revert. Let's keep but rely on new price
+  monthlyPrice: number;
   price: number;
   interval: 'month' | 'year';
 }
@@ -58,7 +49,7 @@ interface InstanceStatusSummary {
     id: string;
     instance_name: string;
     status: string;
-    model: string;
+    persona_name: string;
     last_connection: string;
     messages_sent: number;
     clients_count: number;
@@ -111,7 +102,7 @@ const MOCK_DASHBOARD_DATA = {
         personas_count: 1,
         messages_sent: 1250
     },
-    limits: { // Legacy structure support
+    limits: {
         max_messages: 1000,
         grace_messages: 500,
         max_customers: 200,
@@ -195,7 +186,7 @@ export default function TeamDashboardPage() {
               id: inst.id,
               instance_name: inst.instance_name,
               status: inst.status,
-              model: inst.persona?.model || 'Padrão',
+              persona_name: inst.persona?.persona_name || 'Persona Padrão',
               last_connection: inst.last_connection_at ? new Date(inst.last_connection_at).toLocaleString('pt-BR') : 'Nunca',
               messages_sent: inst.messages_sent || 0,
               clients_count: inst.clients_count || 0
@@ -206,11 +197,10 @@ export default function TeamDashboardPage() {
     } catch (err: any) {
       logger.error("Erro ao buscar dados do dashboard:", err.response?.data || err.message);
       
-      // FALLBACK PARA MOCK DATA EM DESENVOLVIMENTO
       if (process.env.NODE_ENV === 'development') {
           logger.warn("Usando MOCK DATA para o dashboard devido a erro na API.");
           
-           setStats({
+          setStats({
             activeInstances: MOCK_DASHBOARD_DATA.instances.filter((inst: any) => inst.status === 'connected').length,
             totalPersonas: MOCK_DASHBOARD_DATA.personas.length,
             activeSubscriptionPlan: MOCK_DASHBOARD_DATA.subscription.plan_name,
@@ -241,10 +231,13 @@ export default function TeamDashboardPage() {
               MOCK_DASHBOARD_DATA.instances.map((inst: any) => ({
                   id: inst.id,
                   instance_name: inst.instance_name,
-                  status: inst.status
+                  status: inst.status,
+                  persona_name: 'Persona Mock',
+                  last_connection: inst.last_connection_at || 'Nunca',
+                  messages_sent: inst.messages_sent,
+                  clients_count: inst.clients_count
               }))
           );
-          // Não define erro para UI, pois o mock é um sucesso "degradado"
           toast.warning("Usando dados de demonstração (API offline).");
       } else {
           setError(err.response?.data?.message || "Não foi possível carregar os dados do dashboard.");
@@ -253,16 +246,13 @@ export default function TeamDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [team]); // Removido 'user' da dependência, pois 'team' já depende de 'user'
+  }, [team]);
 
   useEffect(() => {
-    // Só executa se 'team' estiver definido (o que implica que 'user' também está)
     if (team) {
       fetchDashboardData();
     }
-    // Se 'team' for null, o layout já deveria ter redirecionado.
-    // Se o layout não redirecionar e 'team' continuar null, esta página mostrará o estado de erro/carregamento.
-  }, [team, fetchDashboardData]); // Adicionado fetchDashboardData às dependências
+  }, [team, fetchDashboardData]);
 
  const getStatusBadgeVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
     if (!status) return 'secondary';
@@ -272,25 +262,22 @@ export default function TeamDashboardPage() {
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 space-y-6 animate-pulse">
-        <Skeleton className="h-10 w-1/3 mb-4" /> {/* Título */}
-        <Skeleton className="h-6 w-1/2 mb-6" /> {/* Subtítulo */}
+        <Skeleton className="h-10 w-1/3 mb-4" />
+        <Skeleton className="h-6 w-1/2 mb-6" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Skeleton className="h-[125px] rounded-lg" />
           <Skeleton className="h-[125px] rounded-lg" />
           <Skeleton className="h-[125px] rounded-lg" />
           <Skeleton className="h-[125px] rounded-lg" />
         </div>
-        <Skeleton className="h-8 w-1/3 mt-8 mb-4" /> {/* Título do Resumo de Instâncias */}
+        <Skeleton className="h-8 w-1/3 mt-8 mb-4" />
         <Skeleton className="h-[70px] rounded-lg" />
         <Skeleton className="h-[70px] rounded-lg" />
       </div>
     );
   }
 
-  // Se o user ou team não estiverem disponíveis após o carregamento (o layout deve tratar, mas por segurança)
   if (!user || !team) {
-    // O hook useUser({ or: "redirect" }) e a lógica no Layout.tsx deveriam ter prevenido este estado.
-    // Se chegou aqui, pode haver um problema na lógica de autenticação/redirecionamento.
     return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <AlertTriangle className="w-16 h-16 text-destructive mb-4" />
@@ -311,7 +298,6 @@ export default function TeamDashboardPage() {
         </div>
     );
   }
-
 
   return (
     <div className="p-4 md:p-6 space-y-8">
@@ -363,7 +349,7 @@ export default function TeamDashboardPage() {
             />
             {stats?.periodStart && (stats?.messagesSent ?? 0) > 0 && (() => {
                 const daysPassed = Math.max(1, Math.ceil((Date.now() - new Date(stats.periodStart!).getTime()) / (1000 * 60 * 60 * 24)));
-                const projection = calculateProjection(stats.messagesSent, 30, daysPassed); // Assuming 30 days cycle
+                const projection = calculateProjection(stats.messagesSent, 30, daysPassed);
                 const totalLimit = (stats.maxMessages + stats.graceMessages);
                 
                 if (projection > totalLimit) {
@@ -448,7 +434,7 @@ export default function TeamDashboardPage() {
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <p className="font-semibold text-base">{inst.instance_name}</p>
-                                    <p className="text-xs text-muted-foreground">{inst.model}</p>
+                                    <p className="text-xs text-muted-foreground">{inst.persona_name}</p>
                                 </div>
                                 <Badge variant={getStatusBadgeVariant(inst.status)}>
                                     {inst.status.replace("_", " ").toUpperCase()}
