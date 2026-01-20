@@ -1300,7 +1300,10 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 										<Button 
 											variant="ghost" 
 											size="sm" 
-											onClick={() => setIsPairingCodeMode(true)}
+											onClick={() => {
+                                                setIsPairingCodeMode(true);
+                                                setCurrentQrCodeValue(null);
+                                            }}
 											className="text-xs text-primary hover:text-primary/80"
 										>
 											Conectar com número de telefone
