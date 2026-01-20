@@ -300,7 +300,6 @@ export default function WhatsAppInstancesPage() {
                             }
 						}
 					}
-				}
 			} catch (error) {
 				// Suppress polling errors
 			} finally {
