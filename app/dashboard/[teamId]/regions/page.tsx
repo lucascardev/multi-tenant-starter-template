@@ -147,6 +147,12 @@ export default function WhatsAppInstancesPage() {
 	const [isRequestingCode, setIsRequestingCode] = useState(false)
     const [qrTimeLeft, setQrTimeLeft] = useState<number>(0) // Timer state
 
+	// Debug Logs
+    const [debugLogs, setDebugLogs] = useState<string[]>([]);
+    const addDebugLog = (msg: string) => {
+        setDebugLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 50));
+    };
+
 	// Confirmation Dialog State
 	const [confirmDialog, setConfirmDialog] = useState<{
 		isOpen: boolean
@@ -416,20 +422,25 @@ export default function WhatsAppInstancesPage() {
         const cleanPhone = pairingPhoneNumber.replace(/\D/g, '');
         if (cleanPhone.length < 10) {
             toast.error('Número de telefone inválido.');
+            addDebugLog(`Telefone inválido: ${cleanPhone}`);
             return;
         }
 
         setIsRequestingCode(true);
+        addDebugLog(`Solicitando código para ${cleanPhone}...`);
         try {
             const response = await apiClient.post(`/instances/${qrDialogInstance.id}/pair-code`, {
                 phoneNumber: cleanPhone
             });
+            addDebugLog(`Resposta: ${response.data.message}`);
             toast.success(response.data.message || 'Código solicitado! Aguarde...');
             // Agora o Backend vai processar e atualizar o status para 'needs_pairing'.
             // O polling vai detectar isso e atualizar a UI.
         } catch (error: any) {
             logger.error('Erro ao solicitar código de pareamento:', error);
-            toast.error(error.response?.data?.message || 'Falha ao solicitar código.');
+            const errMsg = error.response?.data?.message || 'Falha ao solicitar código.';
+            addDebugLog(`Erro Api: ${errMsg}`);
+            toast.error(errMsg);
         } finally {
             setIsRequestingCode(false);
         }
@@ -533,6 +544,7 @@ export default function WhatsAppInstancesPage() {
 	const handleConnectInstance = async (instanceId: string) => {
 		setConnectingInstances((prev) => new Set(prev).add(instanceId))
 		setIsSubmittingAction(true)
+        addDebugLog(`Solicitando conexão para ${instanceId}...`);
 		
 		// OPTIMISTIC UPDATE: Set status to 'connecting' locally immediately
 		setInstances(prev => prev.map(inst => 
@@ -543,16 +555,18 @@ export default function WhatsAppInstancesPage() {
 			const response = await apiClient.post(
 				`/instances/${instanceId}/connect`
 			)
+            addDebugLog(`Conexão solicitada ok: ${response.data.message}`);
 			toast.info(
 				response.data.message || 'Solicitação de conexão enviada.'
 			)
 			// Polling will catch the final status
-			setTimeout(() => fetchAllData(false), 1500)
+			setTimeout(() => fetchAllData(false, true), 1500)
 		} catch (error: any) {
 			logger.error(
 				`Erro ao solicitar conexão para instância ${instanceId}:`,
 				error.response?.data || error.message
 			)
+            addDebugLog(`Erro conexão: ${error.response?.data?.message || error.message}`);
 			toast.error(
 				error.response?.data?.message || 'Falha ao solicitar conexão.'
 			)
@@ -1079,15 +1093,15 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 							</DialogDescription>
 						</DialogHeader>
 								<div className='px-6 py-2 flex justify-center items-center min-h-[290px] bg-muted/30 dark:bg-muted/10 rounded-md mx-6 flex-col'>
-							{isQrLoading && ( // Se isQrLoading for true
+							{isQrLoading && !isPairingCodeMode && ( // Hide spinner if in pairing mode (we show form instead)
 								<div className='flex flex-col items-center gap-2 text-muted-foreground'>
 									<RefreshCw className='h-8 w-8 animate-spin' />
 									<span>Aguardando Servidor...</span>
 								</div>
 							)}
 
-							{/* PHONE NUMBER INPUT MODE */}
-							{!isQrLoading && isPairingCodeMode && !currentQrCodeValue && (
+							{/* PHONE NUMBER INPUT MODE - Show even if loading (as long as we are in pairing mode) */}
+							{isPairingCodeMode && !currentQrCodeValue && (
 								<div className="w-full max-w-[260px] space-y-4">
 									<div className="text-center space-y-2">
 										<p className="font-medium">Conectar com Código</p>
@@ -1100,7 +1114,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 											<Label htmlFor="pairing-phone" className="sr-only">Telefone</Label>
 											<Input
 												id="pairing-phone"
-												placeholder="Ex: 11999998888"
+												placeholder="Ex: 5511999998888"
 												value={pairingPhoneNumber}
 												onChange={(e) => setPairingPhoneNumber(e.target.value)}
 												disabled={isRequestingCode}
@@ -1217,6 +1231,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								)}
 
 							{/* GENERIC MESSAGE IF STATUS IS WEIRD */}
+							{/* GENERIC MESSAGE IF STATUS IS WEIRD OR DISCONNECTED */}
 							{!isQrLoading &&
 								!isPairingCodeMode &&
 								qrDialogInstance &&
@@ -1224,17 +1239,21 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								qrDialogInstance.status !== 'connecting' &&
 								qrDialogInstance.status !==
 									'pending_creation' && (
-									<p className='text-muted-foreground text-center p-4'>
-										Instância{' '}
-										<span className='font-semibold'>
-											{qrDialogInstance.instance_name}
-										</span>
-										não está aguardando conexão (Status:{' '}
-										{qrDialogInstance.status
-											?.replace('_', ' ')
-											.toUpperCase()}
-										).
-									</p>
+									<div className='flex flex-col items-center justify-center space-y-4 text-center p-4'>
+										<div className="text-muted-foreground">
+											<p>Instância <strong>{qrDialogInstance.instance_name}</strong> desconectada.</p>
+											<p className="text-xs mt-1">Clique para tentar conectar novamente.</p>
+										</div>
+										<Button 
+											onClick={() => handleConnectInstance(qrDialogInstance.id)}
+											disabled={isSubmittingAction}
+											variant="outline"
+											className="border-dashed"
+										>
+											{isSubmittingAction ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+											Tentar Novamente
+										</Button>
+									</div>
 								)}
 						</div>
 						<DialogFooter className='p-6 pt-4 sm:justify-between items-center border-t'>
@@ -1247,6 +1266,14 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								</Button>
 							</DialogClose>
 						</DialogFooter>
+                        
+                        {/* DEBUG LOGS AREA */}
+                        <div className="mx-6 mb-6 p-2 bg-black/90 text-green-400 font-mono text-[10px] rounded h-[100px] overflow-y-auto whitespace-pre-wrap border border-green-900/50">
+                            <div className="font-bold border-b border-green-900/50 mb-1 sticky top-0 bg-black/90 pb-1">Debug Logs (Beta)</div>
+                            {debugLogs.length === 0 ? <span className="text-gray-500 italic">...aguardando logs...</span> : debugLogs.map((log, i) => (
+                                <div key={i}>{log}</div>
+                            ))}
+                        </div>
 					</DialogContent>
 				</Dialog>
 
