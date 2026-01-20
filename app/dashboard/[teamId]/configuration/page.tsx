@@ -766,7 +766,7 @@ export default function AiConfigurationPage() {
                 <CardContent>
                       <div className="flex gap-2 max-w-md mb-4">
                         <Input 
-                            placeholder="Ex: 5511999999999" 
+                            placeholder="Ex: (11) 99999-9999" 
                             value={newWhiteListPhone}
                             onChange={(e) => setNewWhiteListPhone(formatPhone(e.target.value))}
                         />
