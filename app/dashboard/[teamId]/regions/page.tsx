@@ -491,6 +491,10 @@ export default function WhatsAppInstancesPage() {
 							`Abrindo dialog QR para a nova instância ${newInstanceFromList.instance_name} com status ${newInstanceFromList.status}`
 						)
 						handleOpenQrDialog(newInstanceFromList)
+						
+						// Auto-connect to provide fluid experience
+						logger.info(`Auto-connecting newly created instance: ${newInstanceFromList.instance_name}`);
+						handleConnectInstance(newInstanceFromList.id);
 					}
 				} else {
 					logger.warn(
@@ -952,7 +956,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 									openConfirmDialog('connect', instance)
                                 
                                 // Determine label based on status
-                                if (instance.status === 'disconnected') {
+                                if (instance.status === 'disconnected' || instance.status === 'pending_creation') {
                                     mainButtonText = 'Conectar';
                                     mainButtonIcon = <Wifi className='mr-2 h-4 w-4' />;
                                 } else {
