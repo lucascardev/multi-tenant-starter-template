@@ -322,8 +322,8 @@ export default function AiConfigurationPage() {
 			setPersonas(personasRes.data.personas || [])
 
             // Process Whitelist
-            if (clientConfigRes.data && Array.isArray(clientConfigRes.data.phone_number_whitelist)) {
-                setPhoneNumberWhitelist(clientConfigRes.data.phone_number_whitelist.map(String));
+            if (clientConfigRes.data && Array.isArray(clientConfigRes.data.phoneNumberWhitelist)) {
+                setPhoneNumberWhitelist(clientConfigRes.data.phoneNumberWhitelist.map(String));
             } else {
                 setPhoneNumberWhitelist([]);
             }
