@@ -145,6 +145,7 @@ export default function WhatsAppInstancesPage() {
 	const [isPairingCodeMode, setIsPairingCodeMode] = useState(false)
 	const [pairingPhoneNumber, setPairingPhoneNumber] = useState('')
 	const [isRequestingCode, setIsRequestingCode] = useState(false)
+    const [qrTimeLeft, setQrTimeLeft] = useState<number>(0) // Timer state
 
 	// Confirmation Dialog State
 	const [confirmDialog, setConfirmDialog] = useState<{
@@ -260,7 +261,7 @@ export default function WhatsAppInstancesPage() {
 			if (
 				!isQrDialogOpen ||
 				!qrDialogInstance ||
-				qrDialogInstance.status !== 'needs_qr'
+				(qrDialogInstance.status !== 'needs_qr' && qrDialogInstance.status !== 'needs_pairing')
 			) {
 				if (qrIntervalId) clearInterval(qrIntervalId)
 				// logger.info(`Poll QR: Parando. DialogOpen: ${isQrDialogOpen}, InstanceStatus: ${qrDialogInstance?.status}`);
@@ -319,7 +320,7 @@ export default function WhatsAppInstancesPage() {
 		if (
 			isQrDialogOpen &&
 			qrDialogInstance &&
-			qrDialogInstance.status === 'needs_qr'
+			(qrDialogInstance.status === 'needs_qr' || qrDialogInstance.status === 'needs_pairing')
 		) {
 			pollSpecificInstanceQr() // Busca imediata
 			qrIntervalId = setInterval(
@@ -363,7 +364,16 @@ export default function WhatsAppInstancesPage() {
 					// Atualiza os dados da instância no dialog do QR
 					if (qrDialogInstance?.id === instanceId) {
 						setQrDialogInstance(updatedInstance)
-						setCurrentQrCodeValue(updatedInstance.qr_code || null)
+                        
+                        // Handle Pairing Code from Status Message
+                        if (updatedInstance.status === 'needs_pairing' && updatedInstance.last_status_message?.includes('Código')) {
+                             const code = updatedInstance.last_status_message.split(': ')[1]?.trim() || updatedInstance.last_status_message;
+                             setCurrentQrCodeValue(code);
+                             setIsPairingCodeMode(false); // Switch to display mode (text)
+                        } else {
+						     setCurrentQrCodeValue(updatedInstance.qr_code || null)
+                        }
+
 						setIsQrLoading(false) // Para o loading após a primeira tentativa de buscar QR
 
 						if (updatedInstance.status === 'connected') {
@@ -387,9 +397,10 @@ export default function WhatsAppInstancesPage() {
 							setIsQrDialogOpen(false)
 						} else if (
 							updatedInstance.status !== 'needs_qr' &&
-							updatedInstance.status !== 'connecting'
+							updatedInstance.status !== 'connecting' &&
+                            updatedInstance.status !== 'needs_pairing'
 						) {
-							// Se o status mudou para algo que não requer QR, fecha o dialog
+							// Se o status mudou para algo que não requer QR ou Pairing, fecha o dialog
 							setIsQrDialogOpen(false)
 						}
 					}
@@ -499,6 +510,58 @@ export default function WhatsAppInstancesPage() {
 			setIsSubmittingAction(false)
 		}
 	}
+
+
+
+    const handleRequestPairingCode = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!qrDialogInstance || !pairingPhoneNumber) return;
+        
+        // Basic validation (remove non-digits)
+        const cleanPhone = pairingPhoneNumber.replace(/\D/g, '');
+        if (cleanPhone.length < 10) {
+            toast.error('Número de telefone inválido.');
+            return;
+        }
+
+        setIsRequestingCode(true);
+        try {
+            const response = await apiClient.post(`/instances/${qrDialogInstance.id}/pair-code`, {
+                phoneNumber: cleanPhone
+            });
+            toast.success(response.data.message || 'Código solicitado! Aguarde...');
+            // Agora o Backend vai processar e atualizar o status para 'needs_pairing'.
+            // O polling vai detectar isso e atualizar a UI.
+        } catch (error: any) {
+            logger.error('Erro ao solicitar código de pareamento:', error);
+            toast.error(error.response?.data?.message || 'Falha ao solicitar código.');
+        } finally {
+            setIsRequestingCode(false);
+        }
+    };
+
+    // QR Timer Logic
+    useEffect(() => {
+        if (!isQrDialogOpen || !qrDialogInstance || !qrDialogInstance.qr_code_expires_at) {
+            setQrTimeLeft(0);
+            return;
+        }
+
+        const targetTime = new Date(qrDialogInstance.qr_code_expires_at).getTime();
+        
+        const timer = setInterval(() => {
+            const now = new Date().getTime();
+            const diff = Math.max(0, Math.ceil((targetTime - now) / 1000));
+            setQrTimeLeft(diff);
+
+            if (diff <= 0) {
+                // Time's up
+                // We could force a refresh here
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isQrDialogOpen, qrDialogInstance]);
 
 	const handleOpenQrDialog = (instance: Instance) => {
 		logger.info(
@@ -638,32 +701,7 @@ export default function WhatsAppInstancesPage() {
 		}
 	}
 
-	const handleRequestPairingCode = async (e: FormEvent) => {
-		e.preventDefault()
-		if (!qrDialogInstance || !pairingPhoneNumber.trim()) return
 
-		setIsRequestingCode(true)
-		try {
-			// clean phone number: remove non-numeric chars
-			const cleanedPhone = pairingPhoneNumber.replace(/\D/g, '')
-			
-			const response = await apiClient.post(
-				`/instances/${qrDialogInstance.id}/pair-code`,
-				{ phoneNumber: cleanedPhone }
-			)
-			toast.success(
-				response.data.message || 'Código de pareamento solicitado! Aguarde na tela.'
-			)
-			// The code will arrive via polling in the `qr_code` field, likely as a text string instead of base64 image.
-		} catch (error: any) {
-			logger.error('Erro ao solicitar código de pareamento:', error)
-			toast.error(
-				error.response?.data?.message || 'Erro ao solicitar código.'
-			)
-		} finally {
-			setIsRequestingCode(false)
-		}
-	}
 
 const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
     if (!status) return 'secondary';
@@ -1193,23 +1231,38 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 										</div>
 									) : (
 										// LOGIC FOR TRADITIONAL QR CODE (Base64 Image)
-										<Image
-											src={
-												currentQrCodeValue.startsWith(
-													'data:image'
-												)
-													? currentQrCodeValue
-													: `data:image/png;base64,${currentQrCodeValue}`
-											}
-											alt='QR Code do WhatsApp'
-											width={280}
-											height={280}
-											unoptimized
-											className='rounded-md border bg-background p-1 shadow-md'
-											onError={() => {
-												/* ... */
-											}}
-										/>
+                                        <div className="flex flex-col items-center w-full max-w-[280px]">
+                                            <Image
+                                                src={
+                                                    currentQrCodeValue.startsWith(
+                                                        'data:image'
+                                                    )
+                                                        ? currentQrCodeValue
+                                                        : `data:image/png;base64,${currentQrCodeValue}`
+                                                }
+                                                alt='QR Code do WhatsApp'
+                                                width={280}
+                                                height={280}
+                                                unoptimized
+                                                className='rounded-md border bg-background p-1 shadow-md'
+                                                onError={() => {
+                                                    /* ... */
+                                                }}
+                                            />
+                                            {qrTimeLeft > 0 && (
+                                                <div className="w-full mt-3 space-y-1">
+                                                     <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                                        <div 
+                                                            className="h-full bg-primary transition-all duration-1000 ease-linear" 
+                                                            style={{ width: `${Math.min(100, (qrTimeLeft / 20) * 100)}%` }} 
+                                                        />
+                                                     </div>
+                                                     <p className="text-[10px] text-center text-muted-foreground w-full">
+                                                        Expira em {qrTimeLeft}s
+                                                     </p>
+                                                </div>
+                                            )}
+                                        </div>
 									)
 								)}
 							
