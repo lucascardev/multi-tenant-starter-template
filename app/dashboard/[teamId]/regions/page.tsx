@@ -160,7 +160,7 @@ export default function WhatsAppInstancesPage() {
 	})
 
 	const fetchAllData = useCallback(
-		async (showLoadingSpinner = false) => {
+		async (showLoadingSpinner = false, suppressError = false) => {
 			if (!user || !team) return
 			if (showLoadingSpinner) setIsLoadingInitialData(true)
 
@@ -209,10 +209,12 @@ export default function WhatsAppInstancesPage() {
 					'Erro em fetchAllData:',
 					error.response?.data || error.message
 				)
-				toast.error(
-					error.response?.data?.message ||
-						'Não foi possível atualizar os dados.'
-				)
+                if (!suppressError) {
+                    toast.error(
+                        error.response?.data?.message ||
+                            'Não foi possível atualizar os dados.'
+                    )
+                }
 			} finally {
 				if (showLoadingSpinner) setIsLoadingInitialData(false)
 			}
@@ -244,7 +246,7 @@ export default function WhatsAppInstancesPage() {
 		// logger.info(`Polling adaptativo: ${pollingInterval}ms (ActiveOps: ${hasActiveOperations})`);
 
 		const intervalId = setInterval(() => {
-			fetchAllData(false) 
+			fetchAllData(false, true) // Suppress errors on auto-poll
 		}, pollingInterval)
 
 		return () => clearInterval(intervalId)
