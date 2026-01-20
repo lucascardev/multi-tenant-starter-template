@@ -381,27 +381,41 @@ export default function WhatsAppInstancesPage() {
 								`Instância "${updatedInstance.instance_name}" conectada com sucesso!`
 							)
 							setIsQrDialogOpen(false)
-						} else if (
-							updatedInstance.status === 'disconnected' ||
-							updatedInstance.status === 'error'
-						) {
-							toast.error(
-								`Instância "${updatedInstance.instance_name}" ${
-									updatedInstance.status === 'error'
-										? 'encontrou um erro'
-										: 'foi desconectada'
-								}. Detalhe: ${
-									updatedInstance.last_status_message || ''
-								}`
-							)
-							setIsQrDialogOpen(false)
+						} else if (updatedInstance.status === 'disconnected') {
+                            // Suppress toast if just polling and it becomes disconnected (QR expired likely)
+                            // We don't close the dialog, we assume a new QR will generate if we keep polling 
+                            // or checking status. IF status stays 'disconnected', we might want to auto-reconnect?
+                            // But usually backend goes to 'needs_qr' or stays 'disconnected' until triggered.
+                            
+                            // If it expires, backend often goes to 'disconnected'.
+                            // We should probably trigger a re-connect attempt if we are in the dialog watching it fail?
+                            // Or just show "Disconnected" in badges.
+                            
+                            // Logic: If user is actively trying to connect (dialog open), preventing toast spam is key.
+                            // We do NOT close the dialog on 'disconnected' automatically anymore to allow user to retry.
+                            
+                            if (!isQrLoading && !isSubmittingAction) {
+                                // If we are sitting there and it disconnects (QR expires?), 
+                                // maybe we should just clear the QR code value to show loading or expired state?
+                                // Let's keep dialog open.
+                            }
+						} else if (updatedInstance.status === 'error') {
+                            // Only show error if it's a NEW error or distinct? 
+                            // For now, suppress closing dialog, let user see it in badge?
+                            // Or show toast once?
+                            
+                            // To prevent spam, we just rely on the badge in the background card or add an alert inside the dialog.
+                            // For now, removing the toast spam and the auto-close.
 						} else if (
 							updatedInstance.status !== 'needs_qr' &&
 							updatedInstance.status !== 'connecting' &&
-                            updatedInstance.status !== 'needs_pairing'
+                            updatedInstance.status !== 'needs_pairing' &&
+                            updatedInstance.status !== 'pending_creation'
 						) {
-							// Se o status mudou para algo que não requer QR ou Pairing, fecha o dialog
-							setIsQrDialogOpen(false)
+							// Se o status mudou para algo que não requer QR ou Pairing (e não é erro/desconectado tratado acima)
+							// setIsQrDialogOpen(false) 
+                            // Wait, if it goes to 'stopped', we might want to close?
+                            // Let's leave it open so user sees what happened unless it's connected.
 						}
 					}
 				}
@@ -545,22 +559,31 @@ export default function WhatsAppInstancesPage() {
     };
 
     // QR Timer Logic
-    useEffect(() => {
-        if (!isQrDialogOpen || !qrDialogInstance || !qrDialogInstance.qr_code_expires_at) {
+        if (!isQrDialogOpen || !qrDialogInstance) {
             setQrTimeLeft(0);
             return;
         }
 
-        const targetTime = new Date(qrDialogInstance.qr_code_expires_at).getTime();
+        const expiresAt = qrDialogInstance.qr_code_expires_at ? new Date(qrDialogInstance.qr_code_expires_at).getTime() : 0;
         
+        // If we have a QR code but no expiration (old backend), default to 20s from now (just visual feedback)
+        // Better: if backend doesn't send expiry, we don't show timer to avoid confusion.
+        // Or we show a generic "Scan now" message.
+        // User asked for "counter". Let's show it if we have it, or fallback if just generated.
+        // Wait, if backend doesn't send it, expiresAt is 0/NaN.
+        
+        if (!expiresAt) {
+             setQrTimeLeft(0);
+             return;
+        }
+
         const timer = setInterval(() => {
             const now = new Date().getTime();
-            const diff = Math.max(0, Math.ceil((targetTime - now) / 1000));
+            const diff = Math.max(0, Math.ceil((expiresAt - now) / 1000));
             setQrTimeLeft(diff);
 
             if (diff <= 0) {
-                // Time's up
-                // We could force a refresh here
+                 // expired
             }
         }, 1000);
 
@@ -1177,7 +1200,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								conectados {'>'} Conectar um aparelho.
 							</DialogDescription>
 						</DialogHeader>
-						<div className='px-6 py-2 flex justify-center items-center min-h-[280px] md:min-h-[320px] bg-muted/30 dark:bg-muted/10 rounded-md mx-6 flex-col'>
+								<div className='px-6 py-2 flex justify-center items-center min-h-[290px] bg-muted/30 dark:bg-muted/10 rounded-md mx-6 flex-col'>
 							{isQrLoading && ( // Se isQrLoading for true
 								<div className='flex flex-col items-center gap-2 text-muted-foreground'>
 									<RefreshCw className='h-8 w-8 animate-spin' />
@@ -1270,8 +1293,8 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 									)
 								)}
 							
-							{/* SWITCH MODES BUTTON (Only shows if waiting for QR/Code logic) */}
-							{!isQrLoading && !currentQrCodeValue && !isPairingCodeMode && (
+							{/* SWITCH MODES BUTTON (Always show unless already in pairing mode) */}
+							{!isQrLoading && !isPairingCodeMode && (
 								<div className="mt-4">
 										<Button 
 											variant="ghost" 
