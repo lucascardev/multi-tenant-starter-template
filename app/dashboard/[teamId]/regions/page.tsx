@@ -885,6 +885,18 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 									) : (
 										<ScanLine className='mr-2 h-4 w-4' />
 									)
+                            } else if (instance.status === 'connecting') {
+                                // Loading state from backend
+                                mainButtonAction = null; // Disabled
+                                mainButtonText = 'Conectando...';
+                                mainButtonIcon = <RefreshCw className='mr-2 h-4 w-4 animate-spin' />;
+                                mainButtonVariant = 'outline';
+                            } else if (instance.status === 'restarting') {
+                                // Restarting state
+                                mainButtonAction = null; // Disabled
+                                mainButtonText = 'Reiniciando...';
+                                mainButtonIcon = <RefreshCw className='mr-2 h-4 w-4 animate-spin' />;
+                                mainButtonVariant = 'outline';
 							} else if (
 								[
 									'disconnected',
@@ -894,21 +906,25 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 									'error_logged_out',
 									'error_restarting',
 									'error_qr_processing',
-									'restarting',
-									'connecting',
 								].includes(instance.status)
 							) {
 								mainButtonAction = () =>
 									openConfirmDialog('connect', instance)
-								mainButtonText = isCurrentlyProcessingInstance
-									? 'Processando...'
-									: 'Conectar / Tentar Novamente'
-								mainButtonIcon =
-									isCurrentlyProcessingInstance ? (
-										<RefreshCw className='mr-2 h-4 w-4 animate-spin' />
-									) : (
-										<Wifi className='mr-2 h-4 w-4' />
-									)
+                                
+                                // Determine label based on status
+                                if (instance.status === 'disconnected') {
+                                    mainButtonText = 'Conectar';
+                                    mainButtonIcon = <Wifi className='mr-2 h-4 w-4' />;
+                                } else {
+                                    mainButtonText = 'Tentar Novamente';
+                                    mainButtonIcon = <RotateCcw className='mr-2 h-4 w-4' />;
+                                }
+                                
+                                if (isCurrentlyProcessingInstance) {
+                                    mainButtonText = 'Processando...';
+                                    mainButtonIcon = <RefreshCw className='mr-2 h-4 w-4 animate-spin' />;
+                                }
+
 								mainButtonVariant = 'outline'
 							}
 
