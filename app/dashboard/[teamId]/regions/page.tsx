@@ -283,35 +283,26 @@ export default function WhatsAppInstancesPage() {
 					setQrDialogInstance(updatedInstance) // Atualiza a instância no estado do dialog
 					setCurrentQrCodeValue(updatedInstance.qr_code || null)
 
-					if (updatedInstance.status === 'connected') {
-						toast.success(
-							`Instância "${updatedInstance.instance_name}" conectada!`
-						)
-						setIsQrDialogOpen(false) // Fecha o dialog
-						fetchAllData() // Força um refresh da lista principal
-					} else if (
-						updatedInstance.status === 'error' ||
-						updatedInstance.status === 'disconnected'
-					) {
-						toast.error(
-							`Instância "${updatedInstance.instance_name}" ${
-								updatedInstance.status
-							}. ${updatedInstance.last_status_message || ''}`
-						)
-						setIsQrDialogOpen(false)
-						fetchAllData()
-					} else if (updatedInstance.status !== 'needs_qr') {
-						// Se o status mudou para algo que não é mais 'needs_qr' (ex: 'connecting')
-						// O polling geral da lista deve pegar, mas podemos fechar o dialog se quisermos
-						// setIsQrDialogOpen(false); // Opcional
+						if (updatedInstance.status === 'connected') {
+							toast.success(
+								`Instância "${updatedInstance.instance_name}" conectada com sucesso!`
+							)
+							setIsQrDialogOpen(false)
+							fetchAllData()
+						} else if (
+							updatedInstance.status === 'error' ||
+							updatedInstance.status === 'disconnected'
+						) {
+                            // Suppress generic disconnected/error toasts during QR scan to prevent spam.
+                            // The user will see the status change in the UI.
+                            if (updatedInstance.status === 'error' && updatedInstance.last_status_message) {
+                                // optional: log or show only if critical
+                            }
+						}
 					}
 				}
 			} catch (error) {
-				logger.error(
-					`Poll QR: Erro ao buscar dados da instância ${qrDialogInstance.id}:`,
-					error
-				)
-				// Poderia adicionar um toast se o polling do QR falhar repetidamente
+				// Suppress polling errors
 			} finally {
 				setIsQrLoading(false)
 			}
@@ -320,134 +311,21 @@ export default function WhatsAppInstancesPage() {
 		if (
 			isQrDialogOpen &&
 			qrDialogInstance &&
-			(qrDialogInstance.status === 'needs_qr' || qrDialogInstance.status === 'needs_pairing')
+			(qrDialogInstance.status === 'needs_qr' || 
+             qrDialogInstance.status === 'connecting' || 
+             qrDialogInstance.status === 'needs_pairing')
 		) {
 			pollSpecificInstanceQr() // Busca imediata
 			qrIntervalId = setInterval(
 				pollSpecificInstanceQr,
-				QR_POLLING_INTERVAL
+				2000
 			)
 		}
 
 		return () => {
 			if (qrIntervalId) clearInterval(qrIntervalId)
 		}
-	}, [isQrDialogOpen, qrDialogInstance, fetchAllData])
-
-	useEffect(() => {
-		let intervalId: NodeJS.Timeout | null = null
-		const pollInstanceData = async (instanceId: string) => {
-			if (
-				!isQrDialogOpen ||
-				!qrDialogInstance ||
-				qrDialogInstance.id !== instanceId
-			) {
-				// Se o dialog fechou ou a instância mudou, para o polling
-				if (intervalId) clearInterval(intervalId)
-				return
-			}
-			try {
-				// logger.info(`Polling for instance ${instanceId}`);
-				const response = await apiClient.get<{ instance: Instance }>(
-					`/instances/${instanceId}`
-				)
-				const updatedInstance = response.data.instance
-
-				if (updatedInstance) {
-					// Atualiza a instância específica na lista de instâncias
-					setInstances((prev) =>
-						prev.map((inst) =>
-							inst.id === instanceId ? updatedInstance : inst
-						)
-					)
-
-					// Atualiza os dados da instância no dialog do QR
-					if (qrDialogInstance?.id === instanceId) {
-						setQrDialogInstance(updatedInstance)
-                        
-                        // Handle Pairing Code from Status Message
-                        if (updatedInstance.status === 'needs_pairing' && updatedInstance.last_status_message?.includes('Código')) {
-                             const code = updatedInstance.last_status_message.split(': ')[1]?.trim() || updatedInstance.last_status_message;
-                             setCurrentQrCodeValue(code);
-                             setIsPairingCodeMode(false); // Switch to display mode (text)
-                        } else {
-						     setCurrentQrCodeValue(updatedInstance.qr_code || null)
-                        }
-
-						setIsQrLoading(false) // Para o loading após a primeira tentativa de buscar QR
-
-						if (updatedInstance.status === 'connected') {
-							toast.success(
-								`Instância "${updatedInstance.instance_name}" conectada com sucesso!`
-							)
-							setIsQrDialogOpen(false)
-						} else if (updatedInstance.status === 'disconnected') {
-                            // Suppress toast if just polling and it becomes disconnected (QR expired likely)
-                            // We don't close the dialog, we assume a new QR will generate if we keep polling 
-                            // or checking status. IF status stays 'disconnected', we might want to auto-reconnect?
-                            // But usually backend goes to 'needs_qr' or stays 'disconnected' until triggered.
-                            
-                            // If it expires, backend often goes to 'disconnected'.
-                            // We should probably trigger a re-connect attempt if we are in the dialog watching it fail?
-                            // Or just show "Disconnected" in badges.
-                            
-                            // Logic: If user is actively trying to connect (dialog open), preventing toast spam is key.
-                            // We do NOT close the dialog on 'disconnected' automatically anymore to allow user to retry.
-                            
-                            if (!isQrLoading && !isSubmittingAction) {
-                                // If we are sitting there and it disconnects (QR expires?), 
-                                // maybe we should just clear the QR code value to show loading or expired state?
-                                // Let's keep dialog open.
-                            }
-						} else if (updatedInstance.status === 'error') {
-                            // Only show error if it's a NEW error or distinct? 
-                            // For now, suppress closing dialog, let user see it in badge?
-                            // Or show toast once?
-                            
-                            // To prevent spam, we just rely on the badge in the background card or add an alert inside the dialog.
-                            // For now, removing the toast spam and the auto-close.
-						} else if (
-							updatedInstance.status !== 'needs_qr' &&
-							updatedInstance.status !== 'connecting' &&
-                            updatedInstance.status !== 'needs_pairing' &&
-                            updatedInstance.status !== 'pending_creation'
-						) {
-							// Se o status mudou para algo que não requer QR ou Pairing (e não é erro/desconectado tratado acima)
-							// setIsQrDialogOpen(false) 
-                            // Wait, if it goes to 'stopped', we might want to close?
-                            // Let's leave it open so user sees what happened unless it's connected.
-						}
-					}
-				}
-			} catch (error) {
-				logger.error(
-					`Erro no polling para instância ${instanceId}:`,
-					error
-				)
-				setIsQrLoading(false)
-				// Não mostra toast para erro de polling para não ser invasivo,
-				// mas pode ser útil se o QR não carregar de jeito nenhum.
-			}
-		}
-
-		if (
-			isQrDialogOpen &&
-			qrDialogInstance &&
-			(qrDialogInstance.status === 'needs_qr' ||
-				qrDialogInstance.status === 'connecting')
-		) {
-			setIsQrLoading(!qrDialogInstance.qr_code) // Mostra loading se não tem QR e precisa
-			pollInstanceData(qrDialogInstance.id) // Busca imediata
-			intervalId = setInterval(
-				() => pollInstanceData(qrDialogInstance.id!),
-				QR_POLLING_INTERVAL
-			)
-		}
-
-		return () => {
-			if (intervalId) clearInterval(intervalId)
-		}
-	}, [isQrDialogOpen, qrDialogInstance]) // Depende apenas destes para controlar o polling
+	}, [isQrDialogOpen, qrDialogInstance, fetchAllData]) // Depende apenas destes para controlar o polling
 
 	const handleCreateInstance = async (e: FormEvent) => {
 		e.preventDefault()
@@ -1294,8 +1172,8 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 									)
 								)}
 							
-							{/* SWITCH MODES BUTTON (Always show unless already in pairing mode) */}
-							{!isQrLoading && !isPairingCodeMode && (
+							{/* SWITCH MODES BUTTON (Always show) */}
+							{!isPairingCodeMode && (
 								<div className="mt-4">
 										<Button 
 											variant="ghost" 
