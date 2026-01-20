@@ -145,13 +145,6 @@ export default function WhatsAppInstancesPage() {
 	const [isPairingCodeMode, setIsPairingCodeMode] = useState(false)
 	const [pairingPhoneNumber, setPairingPhoneNumber] = useState('')
 	const [isRequestingCode, setIsRequestingCode] = useState(false)
-    const [qrTimeLeft, setQrTimeLeft] = useState<number>(0) // Timer state
-
-	// Debug Logs
-    const [debugLogs, setDebugLogs] = useState<string[]>([]);
-    const addDebugLog = (msg: string) => {
-        setDebugLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 50));
-    };
 
 	// Confirmation Dialog State
 	const [confirmDialog, setConfirmDialog] = useState<{
@@ -167,7 +160,7 @@ export default function WhatsAppInstancesPage() {
 	})
 
 	const fetchAllData = useCallback(
-		async (showLoadingSpinner = false, suppressError = false) => {
+		async (showLoadingSpinner = false) => {
 			if (!user || !team) return
 			if (showLoadingSpinner) setIsLoadingInitialData(true)
 
@@ -216,12 +209,10 @@ export default function WhatsAppInstancesPage() {
 					'Erro em fetchAllData:',
 					error.response?.data || error.message
 				)
-                if (!suppressError) {
-                    toast.error(
-                        error.response?.data?.message ||
-                            'Não foi possível atualizar os dados.'
-                    )
-                }
+				toast.error(
+					error.response?.data?.message ||
+						'Não foi possível atualizar os dados.'
+				)
 			} finally {
 				if (showLoadingSpinner) setIsLoadingInitialData(false)
 			}
@@ -253,7 +244,7 @@ export default function WhatsAppInstancesPage() {
 		// logger.info(`Polling adaptativo: ${pollingInterval}ms (ActiveOps: ${hasActiveOperations})`);
 
 		const intervalId = setInterval(() => {
-			fetchAllData(false, true) // Suppress errors on auto-poll
+			fetchAllData(false) 
 		}, pollingInterval)
 
 		return () => clearInterval(intervalId)
@@ -267,7 +258,7 @@ export default function WhatsAppInstancesPage() {
 			if (
 				!isQrDialogOpen ||
 				!qrDialogInstance ||
-				(qrDialogInstance.status !== 'needs_qr' && qrDialogInstance.status !== 'needs_pairing')
+				qrDialogInstance.status !== 'needs_qr'
 			) {
 				if (qrIntervalId) clearInterval(qrIntervalId)
 				// logger.info(`Poll QR: Parando. DialogOpen: ${isQrDialogOpen}, InstanceStatus: ${qrDialogInstance?.status}`);
@@ -289,25 +280,35 @@ export default function WhatsAppInstancesPage() {
 					setQrDialogInstance(updatedInstance) // Atualiza a instância no estado do dialog
 					setCurrentQrCodeValue(updatedInstance.qr_code || null)
 
-						if (updatedInstance.status === 'connected') {
-							toast.success(
-								`Instância "${updatedInstance.instance_name}" conectada com sucesso!`
-							)
-							setIsQrDialogOpen(false)
-							fetchAllData()
-						} else if (
-							updatedInstance.status === 'error' ||
-							updatedInstance.status === 'disconnected'
-						) {
-                            // Suppress generic disconnected/error toasts during QR scan to prevent spam.
-                            // The user will see the status change in the UI.
-                            if (updatedInstance.status === 'error' && updatedInstance.last_status_message) {
-                                // optional: log or show only if critical
-                            }
-						}
+					if (updatedInstance.status === 'connected') {
+						toast.success(
+							`Instância "${updatedInstance.instance_name}" conectada!`
+						)
+						setIsQrDialogOpen(false) // Fecha o dialog
+						fetchAllData() // Força um refresh da lista principal
+					} else if (
+						updatedInstance.status === 'error' ||
+						updatedInstance.status === 'disconnected'
+					) {
+						toast.error(
+							`Instância "${updatedInstance.instance_name}" ${
+								updatedInstance.status
+							}. ${updatedInstance.last_status_message || ''}`
+						)
+						setIsQrDialogOpen(false)
+						fetchAllData()
+					} else if (updatedInstance.status !== 'needs_qr') {
+						// Se o status mudou para algo que não é mais 'needs_qr' (ex: 'connecting')
+						// O polling geral da lista deve pegar, mas podemos fechar o dialog se quisermos
+						// setIsQrDialogOpen(false); // Opcional
 					}
+				}
 			} catch (error) {
-				// Suppress polling errors
+				logger.error(
+					`Poll QR: Erro ao buscar dados da instância ${qrDialogInstance.id}:`,
+					error
+				)
+				// Poderia adicionar um toast se o polling do QR falhar repetidamente
 			} finally {
 				setIsQrLoading(false)
 			}
@@ -316,21 +317,110 @@ export default function WhatsAppInstancesPage() {
 		if (
 			isQrDialogOpen &&
 			qrDialogInstance &&
-			(qrDialogInstance.status === 'needs_qr' || 
-             qrDialogInstance.status === 'connecting' || 
-             qrDialogInstance.status === 'needs_pairing')
+			qrDialogInstance.status === 'needs_qr'
 		) {
 			pollSpecificInstanceQr() // Busca imediata
 			qrIntervalId = setInterval(
 				pollSpecificInstanceQr,
-				2000
+				QR_POLLING_INTERVAL
 			)
 		}
 
 		return () => {
 			if (qrIntervalId) clearInterval(qrIntervalId)
 		}
-	}, [isQrDialogOpen, qrDialogInstance, fetchAllData]) // Depende apenas destes para controlar o polling
+	}, [isQrDialogOpen, qrDialogInstance, fetchAllData])
+
+	useEffect(() => {
+		let intervalId: NodeJS.Timeout | null = null
+		const pollInstanceData = async (instanceId: string) => {
+			if (
+				!isQrDialogOpen ||
+				!qrDialogInstance ||
+				qrDialogInstance.id !== instanceId
+			) {
+				// Se o dialog fechou ou a instância mudou, para o polling
+				if (intervalId) clearInterval(intervalId)
+				return
+			}
+			try {
+				// logger.info(`Polling for instance ${instanceId}`);
+				const response = await apiClient.get<{ instance: Instance }>(
+					`/instances/${instanceId}`
+				)
+				const updatedInstance = response.data.instance
+
+				if (updatedInstance) {
+					// Atualiza a instância específica na lista de instâncias
+					setInstances((prev) =>
+						prev.map((inst) =>
+							inst.id === instanceId ? updatedInstance : inst
+						)
+					)
+
+					// Atualiza os dados da instância no dialog do QR
+					if (qrDialogInstance?.id === instanceId) {
+						setQrDialogInstance(updatedInstance)
+						setCurrentQrCodeValue(updatedInstance.qr_code || null)
+						setIsQrLoading(false) // Para o loading após a primeira tentativa de buscar QR
+
+						if (updatedInstance.status === 'connected') {
+							toast.success(
+								`Instância "${updatedInstance.instance_name}" conectada com sucesso!`
+							)
+							setIsQrDialogOpen(false)
+						} else if (
+							updatedInstance.status === 'disconnected' ||
+							updatedInstance.status === 'error'
+						) {
+							toast.error(
+								`Instância "${updatedInstance.instance_name}" ${
+									updatedInstance.status === 'error'
+										? 'encontrou um erro'
+										: 'foi desconectada'
+								}. Detalhe: ${
+									updatedInstance.last_status_message || ''
+								}`
+							)
+							setIsQrDialogOpen(false)
+						} else if (
+							updatedInstance.status !== 'needs_qr' &&
+							updatedInstance.status !== 'connecting'
+						) {
+							// Se o status mudou para algo que não requer QR, fecha o dialog
+							setIsQrDialogOpen(false)
+						}
+					}
+				}
+			} catch (error) {
+				logger.error(
+					`Erro no polling para instância ${instanceId}:`,
+					error
+				)
+				setIsQrLoading(false)
+				// Não mostra toast para erro de polling para não ser invasivo,
+				// mas pode ser útil se o QR não carregar de jeito nenhum.
+			}
+		}
+
+		if (
+			isQrDialogOpen &&
+			qrDialogInstance &&
+			(qrDialogInstance.status === 'needs_qr' ||
+				qrDialogInstance.status === 'connecting')
+		) {
+			setIsQrLoading(!qrDialogInstance.qr_code) // Mostra loading se não tem QR e precisa
+			pollInstanceData(qrDialogInstance.id) // Busca imediata
+			intervalId = setInterval(
+				() => pollInstanceData(qrDialogInstance.id!),
+				QR_POLLING_INTERVAL
+			)
+		}
+
+		return () => {
+			if (intervalId) clearInterval(intervalId)
+		}
+	}, [isQrDialogOpen, qrDialogInstance]) // Depende apenas destes para controlar o polling
 
 	const handleCreateInstance = async (e: FormEvent) => {
 		e.preventDefault()
@@ -388,10 +478,6 @@ export default function WhatsAppInstancesPage() {
 							`Abrindo dialog QR para a nova instância ${newInstanceFromList.instance_name} com status ${newInstanceFromList.status}`
 						)
 						handleOpenQrDialog(newInstanceFromList)
-						
-						// Auto-connect to provide fluid experience
-						logger.info(`Auto-connecting newly created instance: ${newInstanceFromList.instance_name}`);
-						handleConnectInstance(newInstanceFromList.id);
 					}
 				} else {
 					logger.warn(
@@ -411,73 +497,6 @@ export default function WhatsAppInstancesPage() {
 			setIsSubmittingAction(false)
 		}
 	}
-
-
-
-    const handleRequestPairingCode = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!qrDialogInstance || !pairingPhoneNumber) return;
-        
-        // Basic validation (remove non-digits)
-        const cleanPhone = pairingPhoneNumber.replace(/\D/g, '');
-        if (cleanPhone.length < 10) {
-            toast.error('Número de telefone inválido.');
-            addDebugLog(`Telefone inválido: ${cleanPhone}`);
-            return;
-        }
-
-        setIsRequestingCode(true);
-        addDebugLog(`Solicitando código para ${cleanPhone}...`);
-        try {
-            const response = await apiClient.post(`/instances/${qrDialogInstance.id}/pair-code`, {
-                phoneNumber: cleanPhone
-            });
-            addDebugLog(`Resposta: ${response.data.message}`);
-            toast.success(response.data.message || 'Código solicitado! Aguarde...');
-            // Agora o Backend vai processar e atualizar o status para 'needs_pairing'.
-            // O polling vai detectar isso e atualizar a UI.
-        } catch (error: any) {
-            logger.error('Erro ao solicitar código de pareamento:', error);
-            const errMsg = error.response?.data?.message || 'Falha ao solicitar código.';
-            addDebugLog(`Erro Api: ${errMsg}`);
-            toast.error(errMsg);
-        } finally {
-            setIsRequestingCode(false);
-        }
-    };
-
-    // QR Timer Logic
-    useEffect(() => {
-        if (!isQrDialogOpen || !qrDialogInstance) {
-            setQrTimeLeft(0);
-            return;
-        }
-
-        const expiresAt = qrDialogInstance.qr_code_expires_at ? new Date(qrDialogInstance.qr_code_expires_at).getTime() : 0;
-        
-        // If we have a QR code but no expiration (old backend), default to 20s from now (just visual feedback)
-        // Better: if backend doesn't send expiry, we don't show timer to avoid confusion.
-        // Or we show a generic "Scan now" message.
-        // User asked for "counter". Let's show it if we have it, or fallback if just generated.
-        // Wait, if backend doesn't send it, expiresAt is 0/NaN.
-        
-        if (!expiresAt) {
-             setQrTimeLeft(0);
-             return;
-        }
-
-        const timer = setInterval(() => {
-            const now = new Date().getTime();
-            const diff = Math.max(0, Math.ceil((expiresAt - now) / 1000));
-            setQrTimeLeft(diff);
-
-            if (diff <= 0) {
-                 // expired
-            }
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [isQrDialogOpen, qrDialogInstance]);
 
 	const handleOpenQrDialog = (instance: Instance) => {
 		logger.info(
@@ -544,7 +563,6 @@ export default function WhatsAppInstancesPage() {
 	const handleConnectInstance = async (instanceId: string) => {
 		setConnectingInstances((prev) => new Set(prev).add(instanceId))
 		setIsSubmittingAction(true)
-        addDebugLog(`Solicitando conexão para ${instanceId}...`);
 		
 		// OPTIMISTIC UPDATE: Set status to 'connecting' locally immediately
 		setInstances(prev => prev.map(inst => 
@@ -555,18 +573,16 @@ export default function WhatsAppInstancesPage() {
 			const response = await apiClient.post(
 				`/instances/${instanceId}/connect`
 			)
-            addDebugLog(`Conexão solicitada ok: ${response.data.message}`);
 			toast.info(
 				response.data.message || 'Solicitação de conexão enviada.'
 			)
 			// Polling will catch the final status
-			setTimeout(() => fetchAllData(false, true), 1500)
+			setTimeout(() => fetchAllData(false), 1500)
 		} catch (error: any) {
 			logger.error(
 				`Erro ao solicitar conexão para instância ${instanceId}:`,
 				error.response?.data || error.message
 			)
-            addDebugLog(`Erro conexão: ${error.response?.data?.message || error.message}`);
 			toast.error(
 				error.response?.data?.message || 'Falha ao solicitar conexão.'
 			)
@@ -620,7 +636,32 @@ export default function WhatsAppInstancesPage() {
 		}
 	}
 
+	const handleRequestPairingCode = async (e: FormEvent) => {
+		e.preventDefault()
+		if (!qrDialogInstance || !pairingPhoneNumber.trim()) return
 
+		setIsRequestingCode(true)
+		try {
+			// clean phone number: remove non-numeric chars
+			const cleanedPhone = pairingPhoneNumber.replace(/\D/g, '')
+			
+			const response = await apiClient.post(
+				`/instances/${qrDialogInstance.id}/pair-code`,
+				{ phoneNumber: cleanedPhone }
+			)
+			toast.success(
+				response.data.message || 'Código de pareamento solicitado! Aguarde na tela.'
+			)
+			// The code will arrive via polling in the `qr_code` field, likely as a text string instead of base64 image.
+		} catch (error: any) {
+			logger.error('Erro ao solicitar código de pareamento:', error)
+			toast.error(
+				error.response?.data?.message || 'Erro ao solicitar código.'
+			)
+		} finally {
+			setIsRequestingCode(false)
+		}
+	}
 
 const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
     if (!status) return 'secondary';
@@ -844,18 +885,6 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 									) : (
 										<ScanLine className='mr-2 h-4 w-4' />
 									)
-                            } else if (instance.status === 'connecting') {
-                                // Loading state from backend
-                                mainButtonAction = null; // Disabled
-                                mainButtonText = 'Conectando...';
-                                mainButtonIcon = <RefreshCw className='mr-2 h-4 w-4 animate-spin' />;
-                                mainButtonVariant = 'outline';
-                            } else if (instance.status === 'restarting') {
-                                // Restarting state
-                                mainButtonAction = null; // Disabled
-                                mainButtonText = 'Reiniciando...';
-                                mainButtonIcon = <RefreshCw className='mr-2 h-4 w-4 animate-spin' />;
-                                mainButtonVariant = 'outline';
 							} else if (
 								[
 									'disconnected',
@@ -865,25 +894,21 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 									'error_logged_out',
 									'error_restarting',
 									'error_qr_processing',
+									'restarting',
+									'connecting',
 								].includes(instance.status)
 							) {
 								mainButtonAction = () =>
 									openConfirmDialog('connect', instance)
-                                
-                                // Determine label based on status
-                                if (instance.status === 'disconnected' || instance.status === 'pending_creation') {
-                                    mainButtonText = 'Conectar';
-                                    mainButtonIcon = <Wifi className='mr-2 h-4 w-4' />;
-                                } else {
-                                    mainButtonText = 'Tentar Novamente';
-                                    mainButtonIcon = <RotateCcw className='mr-2 h-4 w-4' />;
-                                }
-                                
-                                if (isCurrentlyProcessingInstance) {
-                                    mainButtonText = 'Processando...';
-                                    mainButtonIcon = <RefreshCw className='mr-2 h-4 w-4 animate-spin' />;
-                                }
-
+								mainButtonText = isCurrentlyProcessingInstance
+									? 'Processando...'
+									: 'Conectar / Tentar Novamente'
+								mainButtonIcon =
+									isCurrentlyProcessingInstance ? (
+										<RefreshCw className='mr-2 h-4 w-4 animate-spin' />
+									) : (
+										<Wifi className='mr-2 h-4 w-4' />
+									)
 								mainButtonVariant = 'outline'
 							}
 
@@ -1092,16 +1117,16 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								conectados {'>'} Conectar um aparelho.
 							</DialogDescription>
 						</DialogHeader>
-								<div className='px-6 py-2 flex justify-center items-center min-h-[290px] bg-muted/30 dark:bg-muted/10 rounded-md mx-6 flex-col'>
-							{isQrLoading && !isPairingCodeMode && ( // Hide spinner if in pairing mode (we show form instead)
+						<div className='px-6 py-2 flex justify-center items-center min-h-[280px] md:min-h-[320px] bg-muted/30 dark:bg-muted/10 rounded-md mx-6 flex-col'>
+							{isQrLoading && ( // Se isQrLoading for true
 								<div className='flex flex-col items-center gap-2 text-muted-foreground'>
 									<RefreshCw className='h-8 w-8 animate-spin' />
 									<span>Aguardando Servidor...</span>
 								</div>
 							)}
 
-							{/* PHONE NUMBER INPUT MODE - Show even if loading (as long as we are in pairing mode) */}
-							{isPairingCodeMode && !currentQrCodeValue && (
+							{/* PHONE NUMBER INPUT MODE */}
+							{!isQrLoading && isPairingCodeMode && !currentQrCodeValue && (
 								<div className="w-full max-w-[260px] space-y-4">
 									<div className="text-center space-y-2">
 										<p className="font-medium">Conectar com Código</p>
@@ -1114,7 +1139,7 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 											<Label htmlFor="pairing-phone" className="sr-only">Telefone</Label>
 											<Input
 												id="pairing-phone"
-												placeholder="Ex: 5511999998888"
+												placeholder="Ex: 11999998888"
 												value={pairingPhoneNumber}
 												onChange={(e) => setPairingPhoneNumber(e.target.value)}
 												disabled={isRequestingCode}
@@ -1150,51 +1175,33 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 										</div>
 									) : (
 										// LOGIC FOR TRADITIONAL QR CODE (Base64 Image)
-                                        <div className="flex flex-col items-center w-full max-w-[280px]">
-                                            <Image
-                                                src={
-                                                    currentQrCodeValue.startsWith(
-                                                        'data:image'
-                                                    )
-                                                        ? currentQrCodeValue
-                                                        : `data:image/png;base64,${currentQrCodeValue}`
-                                                }
-                                                alt='QR Code do WhatsApp'
-                                                width={280}
-                                                height={280}
-                                                unoptimized
-                                                className='rounded-md border bg-background p-1 shadow-md'
-                                                onError={() => {
-                                                    /* ... */
-                                                }}
-                                            />
-                                            {qrTimeLeft > 0 && (
-                                                <div className="w-full mt-3 space-y-1">
-                                                     <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                                        <div 
-                                                            className="h-full bg-primary transition-all duration-1000 ease-linear" 
-                                                            style={{ width: `${Math.min(100, (qrTimeLeft / 20) * 100)}%` }} 
-                                                        />
-                                                     </div>
-                                                     <p className="text-[10px] text-center text-muted-foreground w-full">
-                                                        Expira em {qrTimeLeft}s
-                                                     </p>
-                                                </div>
-                                            )}
-                                        </div>
+										<Image
+											src={
+												currentQrCodeValue.startsWith(
+													'data:image'
+												)
+													? currentQrCodeValue
+													: `data:image/png;base64,${currentQrCodeValue}`
+											}
+											alt='QR Code do WhatsApp'
+											width={280}
+											height={280}
+											unoptimized
+											className='rounded-md border bg-background p-1 shadow-md'
+											onError={() => {
+												/* ... */
+											}}
+										/>
 									)
 								)}
 							
-							{/* SWITCH MODES BUTTON (Always show) */}
-							{!isPairingCodeMode && (
+							{/* SWITCH MODES BUTTON (Only shows if waiting for QR/Code logic) */}
+							{!isQrLoading && !currentQrCodeValue && !isPairingCodeMode && (
 								<div className="mt-4">
 										<Button 
 											variant="ghost" 
 											size="sm" 
-											onClick={() => {
-                                                setIsPairingCodeMode(true);
-                                                setCurrentQrCodeValue(null);
-                                            }}
+											onClick={() => setIsPairingCodeMode(true)}
 											className="text-xs text-primary hover:text-primary/80"
 										>
 											Conectar com número de telefone
@@ -1231,7 +1238,6 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								)}
 
 							{/* GENERIC MESSAGE IF STATUS IS WEIRD */}
-							{/* GENERIC MESSAGE IF STATUS IS WEIRD OR DISCONNECTED */}
 							{!isQrLoading &&
 								!isPairingCodeMode &&
 								qrDialogInstance &&
@@ -1239,21 +1245,17 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								qrDialogInstance.status !== 'connecting' &&
 								qrDialogInstance.status !==
 									'pending_creation' && (
-									<div className='flex flex-col items-center justify-center space-y-4 text-center p-4'>
-										<div className="text-muted-foreground">
-											<p>Instância <strong>{qrDialogInstance.instance_name}</strong> desconectada.</p>
-											<p className="text-xs mt-1">Clique para tentar conectar novamente.</p>
-										</div>
-										<Button 
-											onClick={() => handleConnectInstance(qrDialogInstance.id)}
-											disabled={isSubmittingAction}
-											variant="outline"
-											className="border-dashed"
-										>
-											{isSubmittingAction ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-											Tentar Novamente
-										</Button>
-									</div>
+									<p className='text-muted-foreground text-center p-4'>
+										Instância{' '}
+										<span className='font-semibold'>
+											{qrDialogInstance.instance_name}
+										</span>
+										não está aguardando conexão (Status:{' '}
+										{qrDialogInstance.status
+											?.replace('_', ' ')
+											.toUpperCase()}
+										).
+									</p>
 								)}
 						</div>
 						<DialogFooter className='p-6 pt-4 sm:justify-between items-center border-t'>
@@ -1266,14 +1268,6 @@ const getStatusBadgeVariantRegions = (status?: string): "default" | "secondary" 
 								</Button>
 							</DialogClose>
 						</DialogFooter>
-                        
-                        {/* DEBUG LOGS AREA */}
-                        <div className="mx-6 mb-6 p-2 bg-black/90 text-green-400 font-mono text-[10px] rounded h-[100px] overflow-y-auto whitespace-pre-wrap border border-green-900/50">
-                            <div className="font-bold border-b border-green-900/50 mb-1 sticky top-0 bg-black/90 pb-1">Debug Logs (Beta)</div>
-                            {debugLogs.length === 0 ? <span className="text-gray-500 italic">...aguardando logs...</span> : debugLogs.map((log, i) => (
-                                <div key={i}>{log}</div>
-                            ))}
-                        </div>
 					</DialogContent>
 				</Dialog>
 
