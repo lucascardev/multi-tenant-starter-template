@@ -559,6 +559,7 @@ export default function WhatsAppInstancesPage() {
     };
 
     // QR Timer Logic
+    useEffect(() => {
         if (!isQrDialogOpen || !qrDialogInstance) {
             setQrTimeLeft(0);
             return;
