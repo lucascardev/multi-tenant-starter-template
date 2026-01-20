@@ -12,6 +12,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ClaraIA - Recepcionista Virtual",
   description: "Secretária 24 horas para o seu negócio",
+  verification: {
+    google: "P-kxupNYeAGDLojfD8k470_Qhpe27CJfu-fFWfpnJIw",
+  },
 };
 
 export default function RootLayout({
