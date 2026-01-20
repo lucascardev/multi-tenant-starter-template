@@ -41,11 +41,18 @@ export default function ClinicorpIntegrationPage() {
   const [isClinicorpLoading, setIsClinicorpLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
 
-  const fetchClinicorpConfig = useCallback(async () => {
+  const [googleIsActive, setGoogleIsActive] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const fetchData = useCallback(async () => {
     if (!user) return;
     try {
-      const response = await apiClient.get<ClinicorpFormData>('/integrations/clinicorp');
-      const config = response.data;
+      const [clinicorpRes, googleRes] = await Promise.all([
+        apiClient.get<ClinicorpFormData>('/integrations/clinicorp'),
+        apiClient.get<{ isActive: boolean }>('/integrations/google/config')
+      ]);
+
+      const config = clinicorpRes.data;
       setClinicorpFormData({
         isActive: config.isActive || false,
         username: config.username || "",
@@ -58,9 +65,12 @@ export default function ClinicorpIntegrationPage() {
         lastSyncAt: config.lastSyncAt ? new Date(config.lastSyncAt).toLocaleString('pt-BR') : null,
         errorMessage: config.errorMessage || null,
       });
+
+      setGoogleIsActive(googleRes.data?.isActive || false);
+
     } catch (error: any) {
-      logger.error("Erro ao buscar config Clinicorp:", error.response?.data || error.message);
-      toast.error(error.response?.data?.message || "Falha ao carregar configurações Clinicorp.");
+      logger.error("Erro ao buscar dados:", error.response?.data || error.message);
+      toast.error(error.response?.data?.message || "Falha ao carregar configurações.");
     } finally {
       setIsFetching(false);
     }
@@ -69,9 +79,9 @@ export default function ClinicorpIntegrationPage() {
   useEffect(() => {
     if (user) {
       setIsFetching(true);
-      fetchClinicorpConfig();
+      fetchData();
     }
-  }, [user, fetchClinicorpConfig]);
+  }, [user, fetchData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -80,6 +90,18 @@ export default function ClinicorpIntegrationPage() {
   
   const handleSwitchChange = (checked: boolean, name: keyof ClinicorpFormData) => {
     setClinicorpFormData(prev => ({ ...prev, [name]: checked }));
+  };
+
+  const handleSyncNow = async () => {
+      setIsSyncing(true);
+      try {
+          await apiClient.post('/integrations/clinicorp/sync');
+          toast.success("Sincronização iniciada com sucesso! Seus agendamentos aparecerão no Google Calendar em breve.");
+      } catch (error: any) {
+          toast.error("Erro ao iniciar sincronização: " + (error.response?.data?.message || error.message));
+      } finally {
+          setIsSyncing(false);
+      }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -136,12 +158,45 @@ export default function ClinicorpIntegrationPage() {
         </div>
       </header>
 
-      <Card className="max-w-3xl mx-auto border-l-4 border-l-blue-500">
+      {!googleIsActive && (
+          <div className="max-w-3xl mx-auto mb-6 p-4 border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                  <AlertCircle className="h-6 w-6 text-yellow-600 mt-1" />
+                  <div>
+                      <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Requisito Pendente</h3>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        A integração com o Google Calendar é obrigatória. Por favor, conecte o Google Calendar primeiro para habilitar o Clinicorp.
+                      </p>
+                  </div>
+              </div>
+              <Button asChild variant="default" className="w-full md:w-auto bg-yellow-600 hover:bg-yellow-700 text-white border-none">
+                  <Link href={`/dashboard/${teamId}/integrations/google`}>Conectar Google Calendar</Link>
+              </Button>
+          </div>
+      )}
+
+      <Card className={`max-w-3xl mx-auto border-l-4 border-l-blue-500 ${!googleIsActive ? 'opacity-60 pointer-events-none grayscale-[0.5]' : ''}`}>
         <CardHeader>
-          <CardTitle className="text-xl">Credenciais e Automação</CardTitle>
-          <CardDescription>
-            A Clara usará este sistema para verificar agenda oficial e buscar dados de clientes/pacientes.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+                <CardTitle className="text-xl">Credenciais e Automação</CardTitle>
+                <CardDescription>
+                    A Clara usará este sistema para verificar agenda oficial e buscar dados de clientes/pacientes.
+                </CardDescription>
+            </div>
+            {googleIsActive && clinicorpFormData.isActive && (
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleSyncNow} 
+                    disabled={isSyncing}
+                    className="ml-4 gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                >
+                    <ArrowLeft className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''} rotate-180`} /> {/* rotate-180 to look like import/sync */}
+                    {isSyncing ? "Sincronizando..." : "Sincronizar Agora"}
+                </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -155,6 +210,7 @@ export default function ClinicorpIntegrationPage() {
                 name="isActive"
                 checked={clinicorpFormData.isActive}
                 onCheckedChange={(checked) => handleSwitchChange(checked, "isActive")}
+                disabled={!googleIsActive}
               />
             </div>
 
@@ -163,20 +219,20 @@ export default function ClinicorpIntegrationPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="usernameClinicorp">Usuário Clinicorp</Label>
-                        <Input id="usernameClinicorp" name="username" value={clinicorpFormData.username} onChange={handleInputChange} placeholder="seu_usuario_clinicorp" />
+                        <Input id="usernameClinicorp" name="username" value={clinicorpFormData.username} onChange={handleInputChange} placeholder="seu_usuario_clinicorp" disabled={!googleIsActive} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="passwordClinicorp">Senha Clinicorp</Label>
-                        <Input id="passwordClinicorp" name="password" type="password" value={clinicorpFormData.password} onChange={handleInputChange} placeholder="• • • • • •" autoComplete="new-password" />
+                        <Input id="passwordClinicorp" name="password" type="password" value={clinicorpFormData.password} onChange={handleInputChange} placeholder="• • • • • •" autoComplete="new-password" disabled={!googleIsActive} />
                         <p className="text-[10px] text-muted-foreground">Deixe em branco para manter a senha atual.</p>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="subscriberId">ID de Assinante</Label>
-                        <Input id="subscriberId" name="subscriberId" value={clinicorpFormData.subscriberId} onChange={handleInputChange} placeholder="Ex: 123456" />
+                        <Input id="subscriberId" name="subscriberId" value={clinicorpFormData.subscriberId} onChange={handleInputChange} placeholder="Ex: 123456" disabled={!googleIsActive} />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="companyId">ID da Empresa</Label>
-                        <Input id="companyId" name="companyId" value={clinicorpFormData.companyId} onChange={handleInputChange} placeholder="Ex: 7890" />
+                        <Input id="companyId" name="companyId" value={clinicorpFormData.companyId} onChange={handleInputChange} placeholder="Ex: 7890" disabled={!googleIsActive} />
                     </div>
                 </div>
 
@@ -189,7 +245,7 @@ export default function ClinicorpIntegrationPage() {
                         {id: "enableBudgetFollowupMessages", label: "Acompanhamento de Orçamentos", desc: "Perguntar sobre orçamentos em aberto."},
                     ].map(feature => (
                         <div key={feature.id} className="flex items-start space-x-3">
-                            <Switch id={feature.id} checked={clinicorpFormData[feature.id as keyof ClinicorpFormData] as boolean} onCheckedChange={(checked) => handleSwitchChange(checked, feature.id as keyof ClinicorpFormData)} className="mt-1"/>
+                            <Switch id={feature.id} checked={clinicorpFormData[feature.id as keyof ClinicorpFormData] as boolean} onCheckedChange={(checked) => handleSwitchChange(checked, feature.id as keyof ClinicorpFormData)} className="mt-1" disabled={!googleIsActive}/>
                             <div className="grid gap-1.5 leading-none">
                                 <Label htmlFor={feature.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     {feature.label}
@@ -205,7 +261,7 @@ export default function ClinicorpIntegrationPage() {
               </div>
             )}
              <div className="pt-4">
-                <Button type="submit" disabled={isClinicorpLoading || !clinicorpFormData.isActive} className="w-full md:w-auto min-w-[150px]">
+                <Button type="submit" disabled={isClinicorpLoading || !clinicorpFormData.isActive || !googleIsActive} className="w-full md:w-auto min-w-[150px]">
                 {isClinicorpLoading ? "Salvando..." : "Salvar Configurações"}
                 </Button>
             </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, FormEvent, useCallback } from "react";
 import { useUser } from "@stackframe/stack";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea"; // Adicionado Textarea
@@ -10,7 +11,7 @@ import { toast } from "sonner";
 import apiClient from "@/lib/axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link as LinkIcon, Calendar, Contact2, ShieldCheck, ArrowRightLeft, UploadCloud, ArrowLeft, LogOut, Info, BookOpen } from "lucide-react";
+import { Link as LinkIcon, Calendar, Contact2, ShieldCheck, ArrowRightLeft, UploadCloud, ArrowLeft, LogOut, Info, BookOpen, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -30,6 +31,10 @@ interface GoogleConfigData {
   syncContactsToGoogle: boolean;
   schedulerInstruction?: string | null; // Adicionado
   errorMessage?: string | null;
+  remindersEnabled?: boolean;
+  reminderTime?: string;
+  confirmationDaysBefore?: number;
+  reminderMessageTemplate?: string;
 }
 
 interface GoogleCalendarListItem {
@@ -52,6 +57,7 @@ export default function GoogleIntegrationPage() {
     isActive: false, email: null, selectedCalendarId: null,
     syncAppointmentsToCalendar: false, readCalendarForAvailability: false, syncContactsToGoogle: false,
     schedulerInstruction: "",
+    remindersEnabled: false, reminderTime: "09:00", confirmationDaysBefore: 1, reminderMessageTemplate: ""
   });
   const [calendarStrategy, setCalendarStrategy] = useState<CalendarStrategy>('none');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -81,6 +87,10 @@ export default function GoogleIntegrationPage() {
         syncContactsToGoogle: config.syncContactsToGoogle || false,
         schedulerInstruction: config.schedulerInstruction || "",
         errorMessage: config.errorMessage || null,
+        remindersEnabled: config.remindersEnabled || false,
+        reminderTime: config.reminderTime || "09:00",
+        confirmationDaysBefore: typeof config.confirmationDaysBefore === 'number' ? config.confirmationDaysBefore : 1,
+        reminderMessageTemplate: config.reminderMessageTemplate || ""
       });
       setCalendarStrategy(determineStrategy(config));
 
@@ -155,6 +165,10 @@ export default function GoogleIntegrationPage() {
         syncContactsToGoogle: googleConfig.syncContactsToGoogle,
         schedulerInstruction: googleConfig.schedulerInstruction,
         isActive: googleConfig.isActive,
+        remindersEnabled: googleConfig.remindersEnabled,
+        reminderTime: googleConfig.reminderTime,
+        confirmationDaysBefore: googleConfig.confirmationDaysBefore,
+        reminderMessageTemplate: googleConfig.reminderMessageTemplate,
       };
       
       const response = await apiClient.post('/integrations/google/config', payload);
@@ -293,6 +307,62 @@ export default function GoogleIntegrationPage() {
                                 />
                             </div>
                          </div>
+                    </div>
+
+                    {/* AUTOMATED REMINDERS */}
+                    <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center justify-between">
+                             <Label className="text-lg font-semibold flex items-center gap-2">
+                                <MessageSquare className="h-5 w-5 text-green-600" />
+                                Lembretes Automáticos via WhatsApp
+                            </Label>
+                            <Switch 
+                                checked={googleConfig.remindersEnabled}
+                                onCheckedChange={(c) => setGoogleConfig(prev => ({...prev, remindersEnabled: c}))}
+                            />
+                        </div>
+                        
+                        {googleConfig.remindersEnabled && (
+                            <div className="bg-muted/30 border rounded-lg p-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Horário de Disparo</Label>
+                                        <Input 
+                                            type="time" 
+                                            value={googleConfig.reminderTime} 
+                                            onChange={(e) => setGoogleConfig(prev => ({...prev, reminderTime: e.target.value}))}
+                                        />
+                                        <p className="text-xs text-muted-foreground">Horário que a Clara verificará a agenda do dia seguinte.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Antecedência</Label>
+                                        <Select 
+                                            value={String(googleConfig.confirmationDaysBefore)} 
+                                            onValueChange={(val) => setGoogleConfig(prev => ({...prev, confirmationDaysBefore: parseInt(val)}))}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="0">No mesmo dia (0 dias)</SelectItem>
+                                                <SelectItem value="1">1 dia antes (Padrão)</SelectItem>
+                                                <SelectItem value="2">2 dias antes</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Modelo de Mensagem (Opcional)</Label>
+                                    <Textarea 
+                                        placeholder="Olá {nome}, confirmando seu horário amanhã às {hora}."
+                                        rows={2}
+                                        value={googleConfig.reminderMessageTemplate || ""}
+                                        onChange={(e) => setGoogleConfig(prev => ({...prev, reminderMessageTemplate: e.target.value}))}
+                                    />
+                                    <p className="text-xs text-muted-foreground">Deixe em branco para usar a mensagem padrão gerada pela IA.</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* 2. ESTRATÉGIA (INTENT) */}
