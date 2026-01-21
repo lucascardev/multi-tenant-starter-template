@@ -59,7 +59,8 @@ import {
     CheckCircle2,
     AlertCircle,
     Download,
-    Upload
+    Upload,
+    Calendar
 } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import React, {
@@ -89,6 +90,14 @@ interface PersonaFromAPI {
     owner_phones?: string[] | any // Lista de telefones com acesso de dono
     owner_tool_instruction?: string | null // Instruções para escalabilidade
     owner_alert_instruction?: string | null // Instruções para alertas silenciosos
+    google_calendar_id?: string | null // NEW: Agenda específica
+}
+
+interface GoogleCalendarListItem {
+  id: string;
+  summary: string;
+  primary?: boolean;
+  accessRole?: string;
 }
 
 // Estado do formulário agora reflete a estrutura PersonaInstruction
@@ -138,6 +147,7 @@ export default function AiConfigurationPage() {
 	const team = user?.useTeam(params.teamId)
 
 	const [personas, setPersonas] = useState<PersonaFromAPI[]>([])
+    const [userCalendars, setUserCalendars] = useState<GoogleCalendarListItem[]>([]); // NEW
 	const [isLoading, setIsLoading] = useState(true)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [showFormDialog, setShowFormDialog] = useState(false)
@@ -153,6 +163,7 @@ export default function AiConfigurationPage() {
         ownerPhones: [] as string[], // Estado para lista de telefones de donos
         ownerToolInstruction: '',
         ownerAlertInstruction: '',
+        googleCalendarId: '' as string, // NEW
 	})
 
     // Whitelist State
@@ -313,13 +324,15 @@ export default function AiConfigurationPage() {
 		if (!user || !team) return
 		setIsLoading(true)
 		try {
-			const [personasRes, subInfoRes, templatesRes, clientConfigRes] = await Promise.all([
+			const [personasRes, subInfoRes, templatesRes, clientConfigRes, calendarsRes] = await Promise.all([
 				apiClient.get('/personas'),
 				apiClient.get('/subscriptions/current'),
                 apiClient.get('/personas/templates'),
                 apiClient.get('/client/config'), // Fetch client config for whitelist
+                apiClient.get('/integrations/google/calendars').catch(() => ({ data: [] })), // NEW: Best effort fetch
 			])
 			setPersonas(personasRes.data.personas || [])
+            setUserCalendars(calendarsRes.data || []); // NEW
 
             // Process Whitelist
             if (clientConfigRes.data && Array.isArray(clientConfigRes.data.phoneNumberWhitelist)) {
@@ -485,6 +498,7 @@ export default function AiConfigurationPage() {
             ownerPhones: [],
             ownerToolInstruction: '',
             ownerAlertInstruction: '',
+            googleCalendarId: '',
 		})
         setNewOwnerPhone('');
 		setInstructionFormData(initialInstructionFormData)
@@ -507,6 +521,7 @@ export default function AiConfigurationPage() {
             ownerPhones: phones,
             ownerToolInstruction: persona.owner_tool_instruction || '',
             ownerAlertInstruction: persona.owner_alert_instruction || '',
+            googleCalendarId: persona.google_calendar_id || '',
 		})
         
         setSaveStatus('idle'); // Reset status on edit start
@@ -549,6 +564,7 @@ export default function AiConfigurationPage() {
                 ownerPhones: phones,
                 ownerToolInstruction: persona.owner_tool_instruction || '',
                 ownerAlertInstruction: persona.owner_alert_instruction || '',
+                googleCalendarId: persona.google_calendar_id || '',
             },
             instruction: {
                 ...initialInstructionFormData,
@@ -602,6 +618,7 @@ export default function AiConfigurationPage() {
             owner_phones: personaDetails.ownerPhones,
             owner_tool_instruction: personaDetails.ownerToolInstruction,
             owner_alert_instruction: personaDetails.ownerAlertInstruction,
+            google_calendar_id: personaDetails.googleCalendarId || null, // NEW
 		}
 
 		try {
@@ -989,6 +1006,39 @@ export default function AiConfigurationPage() {
                                         </Badge>
                                     ))}
                                 </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* GOOGLE CALENDAR OVERRIDE SECTION */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className='text-lg flex items-center gap-2'>
+                                    <Calendar className="h-5 w-5 text-indigo-500" /> Agenda Específica
+                                </CardTitle>
+                                <DialogDescription>
+                                    Defina qual agenda do Google esta persona deve usar. Se deixado em branco, usará o padrão da conta.
+                                </DialogDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <Label>Selecione a Agenda</Label>
+                                <Select
+                                    value={personaDetails.googleCalendarId || "default"}
+                                    onValueChange={(val) => setPersonaDetails({...personaDetails, googleCalendarId: val === "default" ? "" : val})}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Usar Padrão da Conta" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="default">
+                                            <span className="text-muted-foreground italic">Usar Padrão da Conta (Lógica Global)</span>
+                                        </SelectItem>
+                                        {userCalendars.map(cal => (
+                                            <SelectItem key={cal.id} value={cal.id}>
+                                                {cal.summary} {cal.primary && "(Principal)"}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </CardContent>
                         </Card>
 
