@@ -11,9 +11,11 @@ import { toast } from "sonner";
 import apiClient from "@/lib/axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link as LinkIcon, Calendar, Contact2, ShieldCheck, ArrowRightLeft, UploadCloud, ArrowLeft, LogOut, Info, BookOpen, MessageSquare } from "lucide-react";
+import { Link as LinkIcon, Calendar, Contact2, ShieldCheck, ArrowRightLeft, UploadCloud, ArrowLeft, LogOut, Info, BookOpen, MessageSquare, CalendarCheck, Bell, CheckSquare } from "lucide-react";
 import Image from "next/image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -31,9 +33,15 @@ interface GoogleConfigData {
   syncContactsToGoogle: boolean;
   schedulerInstruction?: string | null; // Adicionado
   errorMessage?: string | null;
+  // CONFIRMATION FIELDS
+  confirmationEnabled?: boolean;
+  confirmationTime?: string;
+  confirmationDaysBefore?: number;
+  confirmationMessageTemplate?: string;
+  // REMINDER FIELDS
   remindersEnabled?: boolean;
   reminderTime?: string;
-  confirmationDaysBefore?: number;
+  reminderDaysBefore?: number[]; // ARRAY for reminders
   reminderMessageTemplate?: string;
 }
 
@@ -57,7 +65,8 @@ export default function GoogleIntegrationPage() {
     isActive: false, email: null, selectedCalendarId: null,
     syncAppointmentsToCalendar: false, readCalendarForAvailability: false, syncContactsToGoogle: false,
     schedulerInstruction: "",
-    remindersEnabled: false, reminderTime: "09:00", confirmationDaysBefore: 1, reminderMessageTemplate: ""
+    remindersEnabled: false, reminderTime: "09:00", reminderDaysBefore: [1], reminderMessageTemplate: "",
+    confirmationEnabled: false, confirmationTime: "19:00", confirmationDaysBefore: 1, confirmationMessageTemplate: ""
   });
   const [calendarStrategy, setCalendarStrategy] = useState<CalendarStrategy>('none');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -87,9 +96,14 @@ export default function GoogleIntegrationPage() {
         syncContactsToGoogle: config.syncContactsToGoogle || false,
         schedulerInstruction: config.schedulerInstruction || "",
         errorMessage: config.errorMessage || null,
+        // Configurações de Lembrete e Confirmação
+        confirmationEnabled: config.confirmationEnabled || false,
+        confirmationTime: config.confirmationTime || "19:00",
+        confirmationDaysBefore: typeof config.confirmationDaysBefore === 'number' ? config.confirmationDaysBefore : 1,
+        confirmationMessageTemplate: config.confirmationMessageTemplate || "",
         remindersEnabled: config.remindersEnabled || false,
         reminderTime: config.reminderTime || "09:00",
-        confirmationDaysBefore: typeof config.confirmationDaysBefore === 'number' ? config.confirmationDaysBefore : 1,
+        reminderDaysBefore: Array.isArray(config.reminderDaysBefore) ? config.reminderDaysBefore : [1],
         reminderMessageTemplate: config.reminderMessageTemplate || ""
       });
       setCalendarStrategy(determineStrategy(config));
@@ -165,9 +179,14 @@ export default function GoogleIntegrationPage() {
         syncContactsToGoogle: googleConfig.syncContactsToGoogle,
         schedulerInstruction: googleConfig.schedulerInstruction,
         isActive: googleConfig.isActive,
+        // Novos campos
+        confirmationEnabled: googleConfig.confirmationEnabled,
+        confirmationTime: googleConfig.confirmationTime,
+        confirmationDaysBefore: googleConfig.confirmationDaysBefore,
+        confirmationMessageTemplate: googleConfig.confirmationMessageTemplate,
         remindersEnabled: googleConfig.remindersEnabled,
         reminderTime: googleConfig.reminderTime,
-        confirmationDaysBefore: googleConfig.confirmationDaysBefore,
+        reminderDaysBefore: googleConfig.reminderDaysBefore, 
         reminderMessageTemplate: googleConfig.reminderMessageTemplate,
       };
       
@@ -309,60 +328,151 @@ export default function GoogleIntegrationPage() {
                          </div>
                     </div>
 
-                    {/* AUTOMATED REMINDERS */}
+                    {/* AGENDAMENTO INTELIGENTE (TABS) */}
                     <div className="space-y-4 pt-4 border-t">
-                        <div className="flex items-center justify-between">
-                             <Label className="text-lg font-semibold flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5 text-green-600" />
-                                Lembretes Automáticos via WhatsApp
-                            </Label>
-                            <Switch 
-                                checked={googleConfig.remindersEnabled}
-                                onCheckedChange={(c) => setGoogleConfig(prev => ({...prev, remindersEnabled: c}))}
-                            />
-                        </div>
+                        <Label className="text-lg font-semibold flex items-center gap-2">
+                             <CalendarCheck className="h-5 w-5 text-indigo-600" />
+                             Agendamento Inteligente
+                             <Badge variant="secondary" className="text-xs">Novo ✨</Badge>
+                        </Label>
                         
-                        {googleConfig.remindersEnabled && (
-                            <div className="bg-muted/30 border rounded-lg p-4 space-y-4 animate-in fade-in slide-in-from-top-2">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Horário de Disparo</Label>
-                                        <Input 
-                                            type="time" 
-                                            value={googleConfig.reminderTime} 
-                                            onChange={(e) => setGoogleConfig(prev => ({...prev, reminderTime: e.target.value}))}
-                                        />
-                                        <p className="text-xs text-muted-foreground">Horário que a Clara verificará a agenda do dia seguinte.</p>
+                        <Tabs defaultValue="confirmation" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="confirmation" className="flex items-center gap-2">
+                                    <CheckSquare className="h-4 w-4" /> Confirmação
+                                </TabsTrigger>
+                                <TabsTrigger value="reminder" className="flex items-center gap-2">
+                                    <Bell className="h-4 w-4" /> Lembrete
+                                </TabsTrigger>
+                            </TabsList>
+                            
+                            {/* TAB 1: CONFIRMAÇÃO */}
+                            <TabsContent value="confirmation" className="space-y-4 pt-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base">Ativar Pedido de Confirmação</Label>
+                                        <p className="text-sm text-muted-foreground">A Clara perguntará ao paciente se ele vai comparecer.</p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Antecedência</Label>
-                                        <Select 
-                                            value={String(googleConfig.confirmationDaysBefore)} 
-                                            onValueChange={(val) => setGoogleConfig(prev => ({...prev, confirmationDaysBefore: parseInt(val)}))}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecione..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="0">No mesmo dia (0 dias)</SelectItem>
-                                                <SelectItem value="1">1 dia antes (Padrão)</SelectItem>
-                                                <SelectItem value="2">2 dias antes</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Modelo de Mensagem (Opcional)</Label>
-                                    <Textarea 
-                                        placeholder="Olá {nome}, confirmando seu horário amanhã às {hora}."
-                                        rows={2}
-                                        value={googleConfig.reminderMessageTemplate || ""}
-                                        onChange={(e) => setGoogleConfig(prev => ({...prev, reminderMessageTemplate: e.target.value}))}
+                                    <Switch 
+                                        checked={googleConfig.confirmationEnabled}
+                                        onCheckedChange={(c) => setGoogleConfig(prev => ({...prev, confirmationEnabled: c}))}
                                     />
-                                    <p className="text-xs text-muted-foreground">Deixe em branco para usar a mensagem padrão gerada pela IA.</p>
                                 </div>
-                            </div>
-                        )}
+
+                                {googleConfig.confirmationEnabled && (
+                                    <div className="bg-muted/30 border rounded-lg p-4 space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label>Horário de Disparo</Label>
+                                                <Input 
+                                                    type="time" 
+                                                    value={googleConfig.confirmationTime} 
+                                                    onChange={(e) => setGoogleConfig(prev => ({...prev, confirmationTime: e.target.value}))}
+                                                />
+                                                <p className="text-xs text-muted-foreground">Horário ideal para pedir confirmação (Ex: 19:00).</p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Antecedência (Dias)</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input 
+                                                        type="number" 
+                                                        min={1} 
+                                                        max={7}
+                                                        value={googleConfig.confirmationDaysBefore} 
+                                                        onChange={(e) => setGoogleConfig(prev => ({...prev, confirmationDaysBefore: parseInt(e.target.value) || 1}))}
+                                                        className="w-24"
+                                                    />
+                                                    <span className="text-sm text-muted-foreground">dia(s) antes da consulta.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label>Mensagem Personalizada</Label>
+                                            <Textarea 
+                                                placeholder="Olá {{cliente}}, confirmo seu horário para {{data}} às {{hora}}?"
+                                                rows={3}
+                                                value={googleConfig.confirmationMessageTemplate || ""}
+                                                onChange={(e) => setGoogleConfig(prev => ({...prev, confirmationMessageTemplate: e.target.value}))}
+                                            />
+                                             <div className="text-xs text-muted-foreground space-x-2">
+                                                <span>Variáveis:</span>
+                                                <Badge variant="outline" className="text-[10px]">{`{{cliente}}`}</Badge>
+                                                <Badge variant="outline" className="text-[10px]">{`{{data}}`}</Badge>
+                                                <Badge variant="outline" className="text-[10px]">{`{{hora}}`}</Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </TabsContent>
+
+                            {/* TAB 2: LEMBRETE */}
+                            <TabsContent value="reminder" className="space-y-4 pt-4 animate-in fade-in slide-in-from-top-2">
+                                 <div className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base">Ativar Lembretes Simples</Label>
+                                        <p className="text-sm text-muted-foreground">Apenas avisar sobre a consulta, sem pedir confirmação.</p>
+                                    </div>
+                                    <Switch 
+                                        checked={googleConfig.remindersEnabled}
+                                        onCheckedChange={(c) => setGoogleConfig(prev => ({...prev, remindersEnabled: c}))}
+                                    />
+                                </div>
+
+                                {googleConfig.remindersEnabled && (
+                                    <div className="bg-muted/30 border rounded-lg p-4 space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label>Horário de Disparo</Label>
+                                                <Input 
+                                                    type="time" 
+                                                    value={googleConfig.reminderTime} 
+                                                    onChange={(e) => setGoogleConfig(prev => ({...prev, reminderTime: e.target.value}))}
+                                                />
+                                            </div>
+                                            <div className="space-y-3">
+                                                <Label>Quando enviar?</Label>
+                                                <div className="flex flex-col gap-2">
+                                                    {[0, 1, 2].map((day) => (
+                                                        <div key={day} className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id={`day-${day}`} 
+                                                                checked={googleConfig.reminderDaysBefore?.includes(day)}
+                                                                onCheckedChange={(checked) => {
+                                                                    setGoogleConfig(prev => {
+                                                                        const current = prev.reminderDaysBefore || [];
+                                                                        const updated = checked 
+                                                                            ? [...current, day]
+                                                                            : current.filter(d => d !== day);
+                                                                        return { ...prev, reminderDaysBefore: updated.sort() };
+                                                                    });
+                                                                }}
+                                                            />
+                                                            <label
+                                                                htmlFor={`day-${day}`}
+                                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                            >
+                                                                {day === 0 ? "No dia da consulta" : `${day} dia${day > 1 ? 's' : ''} antes`}
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label>Mensagem Personalizada</Label>
+                                             <Textarea 
+                                                placeholder="Lembrete: Você tem uma consulta amanhã às {{hora}}."
+                                                rows={3}
+                                                value={googleConfig.reminderMessageTemplate || ""}
+                                                onChange={(e) => setGoogleConfig(prev => ({...prev, reminderMessageTemplate: e.target.value}))}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </TabsContent>
+                        </Tabs>
                     </div>
 
                     {/* 2. ESTRATÉGIA (INTENT) */}
