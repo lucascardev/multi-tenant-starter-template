@@ -548,13 +548,6 @@ export default function AiConfigurationPage() {
 				? instructionObject.aiName || ''
 				: '',
 		})
-		setInstructionFormData({
-			...initialInstructionFormData, // Começa com defaults para garantir todos os campos
-			...(instructionObject as EditablePersonaInstruction), // Sobrescreve com dados do DB
-			customAiName: subscriptionInfo?.canChangeAiName
-				? instructionObject.aiName || ''
-				: '',
-		})
         
         // Initialize lastSavedData to avoid immediate save trigger
         const initialDataToHash = JSON.stringify({
