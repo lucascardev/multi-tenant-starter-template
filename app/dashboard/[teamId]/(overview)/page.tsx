@@ -565,6 +565,20 @@ export default function TeamDashboardPage() {
                 </div>
             </CardContent>
         </Card>
+
+        <Card className="bg-indigo-50/50 dark:bg-indigo-950/10 border-indigo-200 dark:border-indigo-900">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+                    <MessageSquareText className="h-4 w-4" />
+                    Mensagens Não Lidas
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">
+                    A Clara pode responder automaticamente mensagens que ficaram sem leitura, garantindo que nenhum cliente fique esperando.
+                </p>
+            </CardContent>
+        </Card>
       </div>
     </div>
   );
