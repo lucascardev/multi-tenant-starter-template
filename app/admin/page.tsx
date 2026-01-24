@@ -106,7 +106,7 @@ export default function AdminDashboardPage() {
       setGeneratedTokens(res.data.tokens);
       toast.success(`Generated ${res.data.tokens.length} tokens.`);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to generate tokens.");
+      toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to generate tokens.");
     } finally {
       setLoadingTokens(false);
     }
@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
       setGeneratedTokens(res.data.tokens);
       toast.success(`Generated ${res.data.tokens.length} feature tokens.`);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to generate tokens.");
+      toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to generate tokens.");
     } finally {
       setLoadingFeatureTokens(false);
     }
@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
       setNewAdminEmail("");
       fetchAdmins();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to add admin.");
+      toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to add admin.");
     }
   };
 
@@ -166,7 +166,7 @@ export default function AdminDashboardPage() {
         }
 
     } catch (error: any) {
-        toast.error(error.response?.data?.message || "User not found.");
+        toast.error(error.response?.data?.message || error.response?.data?.error || "User not found.");
     } finally {
         setLoadingUser(false);
     }
@@ -190,7 +190,7 @@ export default function AdminDashboardPage() {
       toast.success("Admin removed.");
       fetchAdmins();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to remove admin.");
+      toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to remove admin.");
     }
   };
 
