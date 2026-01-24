@@ -42,9 +42,12 @@ export default function AdminDashboardPage() {
   // State for Activations
   const [selectedPlan, setSelectedPlan] = useState("basico_brl_435");
   const [billingCycle, setBillingCycle] = useState("monthly");
-  const [tokenCount, setTokenCount] = useState(1);
-  const [generatedTokens, setGeneratedTokens] = useState<any[]>([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
+  
+  // State for Feature Tokens
+  const [selectedFeature, setSelectedFeature] = useState("extended_memory_168h");
+  const [featureTokenCount, setFeatureTokenCount] = useState(1);
+  const [loadingFeatureTokens, setLoadingFeatureTokens] = useState(false);
 
   // State for Admin Management
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -104,6 +107,22 @@ export default function AdminDashboardPage() {
       toast.error(error.response?.data?.message || "Failed to generate tokens.");
     } finally {
       setLoadingTokens(false);
+    }
+  };
+
+  const handleGenerateFeatureTokens = async () => {
+    setLoadingFeatureTokens(true);
+    try {
+      const res = await apiClient.post("/admin/feature-tokens", {
+        feature_key: selectedFeature,
+        count: featureTokenCount,
+      });
+      setGeneratedTokens(res.data.tokens);
+      toast.success(`Generated ${res.data.tokens.length} feature tokens.`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to generate tokens.");
+    } finally {
+      setLoadingFeatureTokens(false);
     }
   };
 
@@ -294,6 +313,51 @@ export default function AdminDashboardPage() {
             <CardFooter>
               <Button onClick={handleGenerateTokens} disabled={loadingTokens}>
                 {loadingTokens ? "Generating..." : "Generate Codes"}
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="mt-8 border-violet-200">
+            <CardHeader>
+              <CardTitle className="text-violet-700">Unlock Specific Features (Add-ons)</CardTitle>
+              <CardDescription>
+                Create tokens to unlock specific premium features independent of the plan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Feature</label>
+                  <Select value={selectedFeature} onValueChange={setSelectedFeature}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Feature" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="extended_memory_168h">Memória Estendida (1 Sem)</SelectItem>
+                      {/* Adicionar novas features aqui futuramente */}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Quantity</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={featureTokenCount}
+                    onChange={(e) => setFeatureTokenCount(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button 
+                onClick={handleGenerateFeatureTokens} 
+                disabled={loadingFeatureTokens}
+                className="bg-violet-600 hover:bg-violet-700"
+              >
+                {loadingFeatureTokens ? "Generating..." : "Generate Feature Codes"}
               </Button>
             </CardFooter>
           </Card>

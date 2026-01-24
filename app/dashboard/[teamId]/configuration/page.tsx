@@ -164,6 +164,7 @@ interface MemoryStats {
     active_context_messages: number;
     active_context_chats: number;
     period_start: string;
+    is_premium_unlocked?: boolean;
 }
 
 export default function AiConfigurationPage() {
@@ -181,6 +182,9 @@ export default function AiConfigurationPage() {
     const [isLoadingKnowledge, setIsLoadingKnowledge] = useState(false)
     const [memoryStats, setMemoryStats] = useState<MemoryStats | null>(null);
     const [isUpdatingMemory, setIsUpdatingMemory] = useState(false);
+    const [showActivationDialog, setShowActivationDialog] = useState(false);
+    const [activationCode, setActivationCode] = useState("");
+    const [isActivatingFeature, setIsActivatingFeature] = useState(false);
 	const [editingPersona, setEditingPersona] = useState<PersonaFromAPI | null>(
 		null
 	)
@@ -614,6 +618,25 @@ export default function AiConfigurationPage() {
             console.error("Failed to fetch memory stats:", error);
         }
     }, []);
+
+    const handleActivateFeature = async () => {
+        if (!activationCode) return;
+        setIsActivatingFeature(true);
+        try {
+            await apiClient.post('/subscriptions/activate-plan', { 
+                activationCode,
+                planId: 'dummy' // backend expects planId but ignores it for feature tokens
+            });
+            toast.success("Recurso Premium ativado!");
+            setActivationCode("");
+            setShowActivationDialog(false);
+            if (editingPersona) fetchMemoryStats(editingPersona.id);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Erro ao ativar código.");
+        } finally {
+            setIsActivatingFeature(false);
+        }
+    }
 
     const updateMemoryRetention = async (hours: number) => {
         if (!editingPersona) return;
@@ -1511,10 +1534,25 @@ export default function AiConfigurationPage() {
                                                     <SelectItem value="24">24 Horas</SelectItem>
                                                     <SelectItem value="36">36 Horas</SelectItem>
                                                     <SelectItem value="48">48 Horas (Máx. Padrão)</SelectItem>
-                                                    <SelectItem value="72">72 Horas (Premium)</SelectItem>
-                                                    <SelectItem value="168">168 Horas (Premium)</SelectItem>
+                                                    <SelectItem value="72" disabled={!memoryStats?.is_premium_unlocked}>
+                                                        72 Horas {!memoryStats?.is_premium_unlocked && "🔒"}
+                                                    </SelectItem>
+                                                    <SelectItem value="168" disabled={!memoryStats?.is_premium_unlocked}>
+                                                        168 Horas {!memoryStats?.is_premium_unlocked && "🔒"}
+                                                    </SelectItem>
                                                 </SelectContent>
                                             </Select>
+
+                                            {!memoryStats?.is_premium_unlocked && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="h-8 text-[10px] border-amber-200 text-amber-700 hover:bg-amber-50"
+                                                    onClick={() => setShowActivationDialog(true)}
+                                                >
+                                                    Liberar Premium
+                                                </Button>
+                                            )}
                                         </div>
                                         <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
                                             Janela de contexto para respostas. <br/>
@@ -1523,6 +1561,39 @@ export default function AiConfigurationPage() {
                                         </p>
                                     </CardContent>
                                 </Card>
+
+                                {/* Activation Dialog */}
+                                <Dialog open={showActivationDialog} onOpenChange={setShowActivationDialog}>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Ativar Memória Premium</DialogTitle>
+                                            <DialogDescription>
+                                                Insira o código de ativação fornecido pelo suporte para liberar janelas de memória de até 1 semana.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="code">Código de Ativação</Label>
+                                                <Input 
+                                                    id="code" 
+                                                    placeholder="XXXX-XXXX" 
+                                                    value={activationCode}
+                                                    onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                                                />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="ghost" onClick={() => setShowActivationDialog(false)}>Cancelar</Button>
+                                            <Button 
+                                                className="bg-violet-600 hover:bg-violet-700"
+                                                onClick={handleActivateFeature}
+                                                disabled={isActivatingFeature || !activationCode}
+                                            >
+                                                {isActivatingFeature ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ativar Agora"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
 
                                 {/* Facts Count Card */}
                                 <Card className="bg-muted/30">
