@@ -42,6 +42,8 @@ export default function AdminDashboardPage() {
   // State for Activations
   const [selectedPlan, setSelectedPlan] = useState("basico_brl_435");
   const [billingCycle, setBillingCycle] = useState("monthly");
+  const [tokenCount, setTokenCount] = useState(1);
+  const [generatedTokens, setGeneratedTokens] = useState<any[]>([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
   
   // State for Feature Tokens
@@ -213,7 +215,7 @@ export default function AdminDashboardPage() {
     <div className="container mx-auto py-10">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard <span className="text-[10px] text-red-500 font-normal">v2-DEBUG-ACTIVE</span></h1>
           <p className="text-muted-foreground">
             Manage activation tokens and team access.
           </p>
