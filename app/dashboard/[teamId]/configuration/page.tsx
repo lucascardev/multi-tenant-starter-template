@@ -1513,9 +1513,10 @@ export default function AiConfigurationPage() {
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                        <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
                                             Janela de contexto para respostas. <br/>
-                                            <span className="text-amber-600 font-medium">Nota:</span> O máximo é <b>1 semana</b> (168h). Períodos maiores exigem plano Premium.
+                                            <span className="text-amber-600 font-medium">Nota:</span> O máximo é <b>1 semana</b> (168h). Períodos maiores exigem plano Premium.<br/>
+                                            <span className="text-muted-foreground font-medium">Atenção:</span> Janelas maiores podem aumentar o <b>tempo de resposta</b> da IA.
                                         </p>
                                     </CardContent>
                                 </Card>
