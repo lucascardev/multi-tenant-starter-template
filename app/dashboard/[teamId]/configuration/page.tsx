@@ -189,11 +189,6 @@ export default function AiConfigurationPage() {
 		null
 	)
 
-    // DEBUG LOGS
-    useEffect(() => {
-        console.log("!!! DEBUG: memoryStats updated:", memoryStats);
-    }, [memoryStats]);
-
 	// Estado do formulário principal para a Persona
 	const [personaDetails, setPersonaDetails] = useState({
 		personaDisplayName: '', // Nome que o usuário dá para esta configuração de persona (ex: "Atendente Principal")
@@ -616,13 +611,11 @@ export default function AiConfigurationPage() {
 	}
 
     const fetchMemoryStats = useCallback(async (personaId: string) => {
-        console.log("!!! DEBUG: Fetching memory stats for persona:", personaId);
         try {
             const res = await apiClient.get<MemoryStats>(`/personas/${personaId}/memory-stats`);
-            console.log("!!! DEBUG: API Response for memory-stats:", res.data);
             setMemoryStats(res.data);
         } catch (error) {
-            console.error("!!! DEBUG: Failed to fetch memory stats:", error);
+            console.error("Failed to fetch memory stats:", error);
         }
     }, []);
 
@@ -1557,7 +1550,6 @@ export default function AiConfigurationPage() {
                                                     size="sm" 
                                                     className="h-8 text-[11px] font-semibold border-amber-300 text-amber-900 bg-amber-100 hover:bg-amber-200 shadow-sm transition-all"
                                                     onClick={() => {
-                                                        console.log("Opening Activation Dialog. Current Stats:", memoryStats);
                                                         setShowActivationDialog(true);
                                                     }}
                                                 >
