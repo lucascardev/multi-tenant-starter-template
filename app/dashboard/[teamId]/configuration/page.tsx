@@ -60,7 +60,11 @@ import {
     AlertCircle,
     Download,
     Upload,
-    Calendar
+    Calendar,
+    Brain,
+    Building2,
+    User,
+    Star
 } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import React, {
@@ -98,6 +102,17 @@ interface GoogleCalendarListItem {
   summary: string;
   primary?: boolean;
   accessRole?: string;
+  backgroundColor?: string;
+}
+
+interface PersonaKnowledge {
+    id: string;
+    persona_id: string;
+    knowledge_key: string;
+    knowledge_value: string;
+    category: 'preference' | 'business_rule' | 'client_fact' | 'learned_behavior' | 'manual_entry';
+    source: string;
+    created_at: string;
 }
 
 // Estado do formulário agora reflete a estrutura PersonaInstruction
@@ -151,6 +166,9 @@ export default function AiConfigurationPage() {
 	const [isLoading, setIsLoading] = useState(true)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [showFormDialog, setShowFormDialog] = useState(false)
+	const [activeTab, setActiveTab] = useState('basic')
+    const [knowledgeList, setKnowledgeList] = useState<PersonaKnowledge[]>([])
+    const [isLoadingKnowledge, setIsLoadingKnowledge] = useState(false)
 	const [editingPersona, setEditingPersona] = useState<PersonaFromAPI | null>(
 		null
 	)
@@ -502,7 +520,9 @@ export default function AiConfigurationPage() {
 		})
         setNewOwnerPhone('');
 		setInstructionFormData(initialInstructionFormData)
+		setInstructionFormData(initialInstructionFormData)
 		setSelectedTemplate('generico')
+        setActiveTab('basic');
 	}
 
 	const handleEdit = (persona: PersonaFromAPI) => {
@@ -570,10 +590,34 @@ export default function AiConfigurationPage() {
 		setSelectedTemplate(
 			instructionObject.businessTypeForTemplate || 'generico'
 		)
+        setActiveTab('basic');
 		setShowFormDialog(true)
 	}
 
-    // Refactored Save Function (Replaces handleSubmit logic partially)
+    const fetchKnowledge = useCallback(async (personaId: string) => {
+        setIsLoadingKnowledge(true);
+        try {
+            const res = await apiClient.get<PersonaKnowledge[]>(`/personas/${personaId}/knowledge`);
+            setKnowledgeList(res.data);
+        } catch (error) {
+            console.error("Failed to fetch knowledge:", error);
+            toast.error("Erro ao carregar memória da persona.");
+        } finally {
+            setIsLoadingKnowledge(false);
+        }
+    }, []);
+
+    const handleDeleteKnowledge = async (id: string) => {
+        try {
+             await apiClient.delete(`/knowledge/${id}`);
+             setKnowledgeList(prev => prev.filter(k => k.id !== id));
+             toast.success("Regra apagada da memória.");
+        } catch (error) {
+             toast.error("Erro ao apagar regra.");
+        }
+    }
+
+
     const performSave = useCallback(async (isAutoSave: boolean = false) => {
         // Validation checks (Skip strict toast validation for auto-save to not annoy, but only if name is present)
         if (!personaDetails.personaDisplayName) { 
