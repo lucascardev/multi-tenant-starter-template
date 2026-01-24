@@ -179,7 +179,7 @@ export default function AdminDashboardPage() {
           toast.success("Subscription updated successfully.");
           handleSearchUser(); // Refresh data
       } catch (error: any) {
-          toast.error(error.response?.data?.message || "Failed to update subscription.");
+          toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to update subscription.");
       }
   };
 
