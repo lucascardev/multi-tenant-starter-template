@@ -643,8 +643,9 @@ export default function AiConfigurationPage() {
         setIsUpdatingMemory(true);
         try {
              await apiClient.put(`/personas/${editingPersona.id}/memory-settings`, { retention_hours: hours });
-             setMemoryStats(prev => prev ? { ...prev, retention_hours: hours } : null);
              toast.success("Configuração de memória atualizada.");
+             // Re-fetch everything to ensure message count and premium status are in sync
+             await fetchMemoryStats(editingPersona.id);
         } catch (error: any) {
              toast.error(error.response?.data?.error || "Erro ao atualizar configuração.");
         } finally {
@@ -1545,12 +1546,15 @@ export default function AiConfigurationPage() {
 
                                             {!memoryStats?.is_premium_unlocked && (
                                                 <Button 
-                                                    variant="outline" 
+                                                    variant="secondary" 
                                                     size="sm" 
-                                                    className="h-8 text-[10px] border-amber-200 text-amber-700 hover:bg-amber-50"
-                                                    onClick={() => setShowActivationDialog(true)}
+                                                    className="h-8 text-[11px] font-semibold border-amber-300 text-amber-900 bg-amber-100 hover:bg-amber-200 shadow-sm transition-all"
+                                                    onClick={() => {
+                                                        console.log("Opening Activation Dialog. Current Stats:", memoryStats);
+                                                        setShowActivationDialog(true);
+                                                    }}
                                                 >
-                                                    Liberar Premium
+                                                    🔓 Liberar Premium
                                                 </Button>
                                             )}
                                         </div>
