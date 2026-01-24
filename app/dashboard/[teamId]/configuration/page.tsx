@@ -954,6 +954,39 @@ export default function AiConfigurationPage() {
 						onSubmit={handleSubmit}
 						className='space-y-6 py-4 max-h-[80vh] overflow-y-auto pr-2'
 					>
+                    {/* TABS NAVIGATION */}
+                    <div className="flex gap-2 border-b mb-4">
+                        <button 
+                            type="button"
+                            onClick={() => setActiveTab('basic')}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                                activeTab === 'basic' ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Principal
+                        </button>
+                       {editingPersona && (
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    setActiveTab('knowledge');
+                                    fetchKnowledge(editingPersona.id);
+                                }}
+                                className={cn(
+                                    "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                                    activeTab === 'knowledge' ? "border-violet-500 text-violet-600" : "border-transparent text-muted-foreground hover:text-foreground hover:text-violet-500"
+                                )}
+                            >
+                                <BrainCircuit className="w-4 h-4" />
+                                Memória
+                            </button>
+                       )}
+                    </div>
+
+                    {/* BASIC TAB CONTENT WRAPPER */}
+					<div className={cn("grid gap-4 py-4", activeTab !== 'basic' && "hidden")}>
+
 						{/* Detalhes Básicos da Persona (Nome da Configuração, Modelo, Default) */}
 						<Card>
 							<CardHeader>
@@ -1409,6 +1442,108 @@ export default function AiConfigurationPage() {
 								</div>
 							</CardContent>
 						</Card>
+
+                    </div> {/* END BASIC TAB CONTENT */}
+
+                    {/* KNOWLEDGE TAB CONTENT */}
+                    {activeTab === 'knowledge' && (
+                        <div className="space-y-4 py-2 h-[60vh] overflow-y-auto px-1">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-medium flex items-center gap-2 text-violet-700">
+                                        <BrainCircuit className="w-5 h-5" />
+                                        Banco de Conhecimento
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Fatos e regras que a Clara aprendeu sozinha.
+                                    </p>
+                                </div>
+                                <Badge variant="outline" className="gap-1">
+                                    {knowledgeList.length} memórias
+                                </Badge>
+                            </div>
+
+                            {isLoadingKnowledge ? (
+                                <div className="flex flex-col items-center justify-center h-40 space-y-2 text-muted-foreground">
+                                    <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                                    <p>Acessando córtex cerebral...</p>
+                                </div>
+                            ) : knowledgeList.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-xl space-y-4 text-muted-foreground bg-muted/20">
+                                    <div className="p-4 bg-muted rounded-full">
+                                        <BrainCircuit className="w-12 h-12 text-muted-foreground/50" />
+                                    </div>
+                                    <div className="text-center max-w-xs">
+                                        <h4 className="font-medium text-foreground">Mente em branco</h4>
+                                        <p className="text-sm mt-1">
+                                            Ainda não aprendi nada específico para esta persona. Converse comigo e me ensine novas regras!
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {knowledgeList.map((fact) => {
+                                        let Icon = BrainCircuit;
+                                        let colorClass = "text-slate-500";
+                                        let bgClass = "bg-slate-100";
+
+                                        switch(fact.category) {
+                                            case 'business_rule': 
+                                                Icon = Building2; 
+                                                colorClass = "text-blue-600";
+                                                bgClass = "bg-blue-50";
+                                                break;
+                                            case 'preference':
+                                                Icon = Star;
+                                                colorClass = "text-amber-600";
+                                                bgClass = "bg-amber-50";
+                                                break;
+                                            case 'client_fact':
+                                                Icon = User;
+                                                colorClass = "text-emerald-600";
+                                                bgClass = "bg-emerald-50";
+                                                break;
+                                        }
+
+                                        return (
+                                            <Card key={fact.id} className="group hover:border-violet-200 transition-all">
+                                                <CardContent className="p-4 flex items-start justify-between gap-4">
+                                                    <div className="flex gap-3">
+                                                        <div className={cn("p-2 rounded-lg h-fit", bgClass)}>
+                                                            <Icon className={cn("w-5 h-5", colorClass)} />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium text-sm">{fact.knowledge_key}</span>
+                                                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5 uppercase tracking-wider">
+                                                                    {fact.source === 'chat' ? 'Aprendido' : 'Manual'}
+                                                                </Badge>
+                                                            </div>
+                                                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                                                {fact.knowledge_value}
+                                                            </p>
+                                                            <p className="text-[10px] text-muted-foreground/60 pt-1">
+                                                                Aprendido em {new Date(fact.created_at).toLocaleDateString('pt-BR')}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <Button 
+                                                        type="button"
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 -mt-1 -mr-1"
+                                                        onClick={() => handleDeleteKnowledge(fact.id)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </CardContent>
+                                            </Card>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
 						<DialogFooter>
 							<DialogClose asChild>
