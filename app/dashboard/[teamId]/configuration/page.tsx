@@ -1506,16 +1506,19 @@ export default function AiConfigurationPage() {
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
+                                                    <SelectItem value="6">6 Horas</SelectItem>
+                                                    <SelectItem value="12">12 Horas</SelectItem>
                                                     <SelectItem value="24">24 Horas</SelectItem>
-                                                    <SelectItem value="48">48 Horas (Padrão)</SelectItem>
-                                                    <SelectItem value="72">72 Horas (3 dias)</SelectItem>
-                                                    <SelectItem value="168">168 Horas (1 Sem)</SelectItem>
+                                                    <SelectItem value="36">36 Horas</SelectItem>
+                                                    <SelectItem value="48">48 Horas (Máx. Padrão)</SelectItem>
+                                                    <SelectItem value="72">72 Horas (Premium)</SelectItem>
+                                                    <SelectItem value="168">168 Horas (Premium)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                         <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
                                             Janela de contexto para respostas. <br/>
-                                            <span className="text-amber-600 font-medium">Nota:</span> O máximo é <b>1 semana</b> (168h). Períodos maiores exigem plano Premium.<br/>
+                                            <span className="text-amber-600 font-medium">Nota:</span> Acima de <b>48 horas</b> exige recurso Premium.<br/>
                                             <span className="text-muted-foreground font-medium">Atenção:</span> Janelas maiores podem aumentar o <b>tempo de resposta</b> da IA.
                                         </p>
                                     </CardContent>
