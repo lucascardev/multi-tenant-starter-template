@@ -159,7 +159,7 @@ interface SubscriptionInfo {
 }
 
 interface MemoryStats {
-    retention_days: number;
+    retention_hours: number;
     facts_stored: number;
     active_context_messages: number;
     active_context_chats: number;
@@ -615,15 +615,15 @@ export default function AiConfigurationPage() {
         }
     }, []);
 
-    const updateMemoryRetention = async (days: number) => {
+    const updateMemoryRetention = async (hours: number) => {
         if (!editingPersona) return;
         setIsUpdatingMemory(true);
         try {
-             await apiClient.put(`/personas/${editingPersona.id}/memory-settings`, { retention_days: days });
-             setMemoryStats(prev => prev ? { ...prev, retention_days: days } : null);
+             await apiClient.put(`/personas/${editingPersona.id}/memory-settings`, { retention_hours: hours });
+             setMemoryStats(prev => prev ? { ...prev, retention_hours: hours } : null);
              toast.success("Configuração de memória atualizada.");
-        } catch (error) {
-             toast.error("Erro ao atualizar configuração.");
+        } catch (error: any) {
+             toast.error(error.response?.data?.error || "Erro ao atualizar configuração.");
         } finally {
             setIsUpdatingMemory(false);
         }
@@ -1498,24 +1498,24 @@ export default function AiConfigurationPage() {
                                         </div>
                                         <div className="flex items-end gap-2">
                                             <Select 
-                                                value={memoryStats?.retention_days.toString() || "30"} 
+                                                value={memoryStats?.retention_hours.toString() || "48"} 
                                                 onValueChange={(val) => updateMemoryRetention(Number(val))}
                                                 disabled={isUpdatingMemory}
                                             >
-                                                <SelectTrigger className="h-8 w-[110px] bg-background border-violet-200">
+                                                <SelectTrigger className="h-8 w-[140px] bg-background border-violet-200">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="15">15 dias</SelectItem>
-                                                    <SelectItem value="30">30 dias</SelectItem>
-                                                    <SelectItem value="45">45 dias</SelectItem>
-                                                    <SelectItem value="60">60 dias</SelectItem>
-                                                    <SelectItem value="90">90 dias</SelectItem>
+                                                    <SelectItem value="24">24 Horas</SelectItem>
+                                                    <SelectItem value="48">48 Horas (Padrão)</SelectItem>
+                                                    <SelectItem value="72">72 Horas (3 dias)</SelectItem>
+                                                    <SelectItem value="168">168 Horas (1 Sem)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            Período que a IA "lembra" das conversas.
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            Janela de contexto para respostas. <br/>
+                                            <span className="text-amber-600 font-medium">Nota:</span> O máximo é <b>1 semana</b> (168h). Períodos maiores exigem plano Premium.
                                         </p>
                                     </CardContent>
                                 </Card>
