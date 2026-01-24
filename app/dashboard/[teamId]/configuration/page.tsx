@@ -64,7 +64,9 @@ import {
     Brain,
     Building2,
     User,
-    Star
+    Star,
+    History,
+    MessageSquare
 } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import React, {
@@ -156,6 +158,14 @@ interface SubscriptionInfo {
 	planName?: string // Para lógica de desconto
 }
 
+interface MemoryStats {
+    retention_days: number;
+    facts_stored: number;
+    active_context_messages: number;
+    active_context_chats: number;
+    period_start: string;
+}
+
 export default function AiConfigurationPage() {
 	const user = useUser()
 	const params = useParams<{ teamId: string }>()
@@ -169,6 +179,8 @@ export default function AiConfigurationPage() {
 	const [activeTab, setActiveTab] = useState('basic')
     const [knowledgeList, setKnowledgeList] = useState<PersonaKnowledge[]>([])
     const [isLoadingKnowledge, setIsLoadingKnowledge] = useState(false)
+    const [memoryStats, setMemoryStats] = useState<MemoryStats | null>(null);
+    const [isUpdatingMemory, setIsUpdatingMemory] = useState(false);
 	const [editingPersona, setEditingPersona] = useState<PersonaFromAPI | null>(
 		null
 	)
@@ -594,18 +606,42 @@ export default function AiConfigurationPage() {
 		setShowFormDialog(true)
 	}
 
+    const fetchMemoryStats = useCallback(async (personaId: string) => {
+        try {
+            const res = await apiClient.get<MemoryStats>(`/personas/${personaId}/memory-stats`);
+            setMemoryStats(res.data);
+        } catch (error) {
+            console.error("Failed to fetch memory stats:", error);
+        }
+    }, []);
+
+    const updateMemoryRetention = async (days: number) => {
+        if (!editingPersona) return;
+        setIsUpdatingMemory(true);
+        try {
+             await apiClient.put(`/personas/${editingPersona.id}/memory-settings`, { retention_days: days });
+             setMemoryStats(prev => prev ? { ...prev, retention_days: days } : null);
+             toast.success("Configuração de memória atualizada.");
+        } catch (error) {
+             toast.error("Erro ao atualizar configuração.");
+        } finally {
+            setIsUpdatingMemory(false);
+        }
+    }
+
     const fetchKnowledge = useCallback(async (personaId: string) => {
         setIsLoadingKnowledge(true);
         try {
             const res = await apiClient.get<PersonaKnowledge[]>(`/personas/${personaId}/knowledge`);
             setKnowledgeList(res.data);
+            fetchMemoryStats(personaId);
         } catch (error) {
             console.error("Failed to fetch knowledge:", error);
             toast.error("Erro ao carregar memória da persona.");
         } finally {
             setIsLoadingKnowledge(false);
         }
-    }, []);
+    }, [fetchMemoryStats]);
 
     const handleDeleteKnowledge = async (id: string) => {
         try {
@@ -1448,7 +1484,74 @@ export default function AiConfigurationPage() {
                     {/* KNOWLEDGE TAB CONTENT */}
                     {activeTab === 'knowledge' && (
                         <div className="space-y-4 py-2 h-[60vh] overflow-y-auto px-1">
-                            <div className="flex items-center justify-between">
+                            
+                            {/* STATS DASHBOARD */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Retention Card */}
+                                <Card className="bg-muted/30">
+                                    <CardContent className="p-4 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                                <History className="h-4 w-4" /> Janela de Memória
+                                            </span>
+                                            {isUpdatingMemory && <Loader2 className="h-3 w-3 animate-spin" />}
+                                        </div>
+                                        <div className="flex items-end gap-2">
+                                            <Select 
+                                                value={memoryStats?.retention_days.toString() || "30"} 
+                                                onValueChange={(val) => updateMemoryRetention(Number(val))}
+                                                disabled={isUpdatingMemory}
+                                            >
+                                                <SelectTrigger className="h-8 w-[110px] bg-background border-violet-200">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="15">15 dias</SelectItem>
+                                                    <SelectItem value="30">30 dias</SelectItem>
+                                                    <SelectItem value="45">45 dias</SelectItem>
+                                                    <SelectItem value="60">60 dias</SelectItem>
+                                                    <SelectItem value="90">90 dias</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Período que a IA "lembra" das conversas.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Facts Count Card */}
+                                <Card className="bg-muted/30">
+                                    <CardContent className="p-4 space-y-2">
+                                        <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                            <BrainCircuit className="h-4 w-4" /> Fatos Aprendidos
+                                        </span>
+                                        <div className="text-2xl font-bold text-violet-600">
+                                            {memoryStats?.facts_stored || 0}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Regras e preferências salvas.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Context Load Card */}
+                                <Card className="bg-muted/30">
+                                    <CardContent className="p-4 space-y-2">
+                                        <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                            <MessageSquare className="h-4 w-4" /> Contexto Ativo
+                                        </span>
+                                        <div className="text-2xl font-bold text-blue-600">
+                                            {memoryStats?.active_context_messages || 0}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Mensagens analisadas por resposta.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2">
                                 <div>
                                     <h3 className="text-lg font-medium flex items-center gap-2 text-violet-700">
                                         <BrainCircuit className="w-5 h-5" />
