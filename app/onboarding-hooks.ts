@@ -24,6 +24,7 @@ export function useRequireOnboarding(enabled: boolean = true) {
   const user = useUser(); // Não usa or:'redirect' aqui para poder checar o metadata antes
   const router = useRouter();
   const pathname = usePathname();
+  const teams = user?.useTeams(); // Correct usage: Call hook at top level
 
   useEffect(() => {
     if (!enabled || !user || pathname === '/onboarding') {
@@ -33,13 +34,18 @@ export function useRequireOnboarding(enabled: boolean = true) {
 
     // Verifica o clientMetadata para a flag 'onboarded'
     const metadata = user.clientMetadata as OnboardingClientMetadata | undefined;
+
     if (!metadata?.onboarded) {
-      logger.info("Usuário não completou onboarding. Redirecionando para /onboarding.");
+      if (teams && teams.length > 0) {
+          logger.info("Usuário tem times, considerado onboarded (Invited Member Flow).");
+          return;
+      } 
+      logger.info("Usuário não completou onboarding e não tem times. Redirecionando para /onboarding.");
       router.push('/onboarding');
     } else {
       logger.info("Usuário já completou onboarding.");
     }
-  }, [user, router, pathname, enabled]); // Dependências do useEffect
+  }, [user, router, pathname, enabled, teams]); // Dependências do useEffect
 
   // O hook não retorna nada, apenas executa o efeito de redirecionamento.
 }

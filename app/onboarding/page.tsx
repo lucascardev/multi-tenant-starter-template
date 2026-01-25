@@ -40,17 +40,23 @@ export default function OnboardingPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [currentStep, setCurrentStep] = React.useState(1);
 
-  // Redireciona se já completou onboarding
+  // Redireciona se já completou onboarding OU se já tem times (invited member)
   React.useEffect(() => {
-    if (user && user.clientMetadata && (user.clientMetadata as OnboardingClientMetadata).onboarded) {
-      logger.info("Usuário já completou onboarding, redirecionando para dashboard...");
-      if (Array.isArray(teams) && teams.length > 0) {
+    const isOnboarded = user && user.clientMetadata && (user.clientMetadata as OnboardingClientMetadata).onboarded;
+    const hasTeams = Array.isArray(teams) && teams.length > 0;
+
+    if (isOnboarded || hasTeams) {
+      logger.info("Usuário onboarded ou com times, redirecionando para dashboard...");
+      if (hasTeams) {
         const targetTeamId = user.selectedTeam?.id || teams[0].id;
         if (!user.selectedTeam) {
             user.setSelectedTeam(teams[0]).then(() => router.push(`/dashboard/${targetTeamId}`));
         } else {
             router.push(`/dashboard/${targetTeamId}`);
         }
+      } else {
+          // Edge case: Onboarded but no teams (shouldn't happen for invited, but maybe legacy)
+          // Just let them stay or handle elsewhere
       }
     }
   }, [user, teams, router]);
