@@ -5,15 +5,6 @@ const nextConfig = {
     env: {
         APP_VERSION: packageJson.version,
     },
-    async redirects() {
-        return [
-            {
-                source: '/auth/:path*',
-                destination: '/handler/auth/:path*',
-                permanent: false,
-            },
-        ]
-    },
 };
 
 export default nextConfig;
