@@ -47,11 +47,11 @@ export default function DashboardTeamLayout({ children }: { children: React.Reac
   // Se useRequireOnboarding já redirecionou, este código pode não ser alcançado para usuários não onboarded.
   // Mas como uma dupla checagem, ou se o hook for desabilitado:
   const metadata = user.clientMetadata as OnboardingClientMetadata | undefined;
-  if (!metadata?.onboarded) {
+  const teams = user.teams;
+  
+  // Se não tem flag de onboarded E não tem times, bloqueia (esperando o hook redirecionar ou usuário ser convidado)
+  if (!metadata?.onboarded && (!teams || teams.length === 0)) {
     // O hook já deveria ter redirecionado. Se chegou aqui, pode ser um estado transitório.
-    // Pode-se mostrar um loader ou null, pois o redirect do hook deve ocorrer.
-    // console.log("Layout: Aguardando redirecionamento do useRequireOnboarding ou usuário não onboarded.");
-    // router.push('/onboarding'); // Redirecionamento forçado se o hook falhar ou for lento
     return <div className="flex items-center justify-center h-screen">Verificando configuração inicial...</div>;
   }
 
