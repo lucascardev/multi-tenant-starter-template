@@ -7,7 +7,8 @@ export function middleware(request: NextRequest) {
   
   if (url.pathname.startsWith('/auth/')) {
       const newUrl = url.clone();
-      newUrl.pathname = `/handler${url.pathname}`;
+      // Replace /auth with /handler (e.g., /auth/callback -> /handler/callback)
+      newUrl.pathname = url.pathname.replace(/^\/auth/, '/handler');
       return NextResponse.redirect(newUrl);
   }
 
