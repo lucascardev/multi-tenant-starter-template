@@ -34,6 +34,7 @@ export default function DashboardTeamLayout({ children }: { children: React.Reac
   // e a lógica abaixo cuidarão do redirecionamento se necessário.
   // Ou mantenha or:'redirect' se preferir que o Stack Auth lide com o não logado primeiro.
   const user = useUser({ or: "redirect" }); // Mantendo or:redirect para o caso de acesso direto sem sessão
+  const teams = user.useTeams(); // Fix: Call useTeams hook at top level
 
   // Chama o hook de onboarding. Ele redirecionará para '/onboarding' se necessário.
   // Só ativa o hook se o usuário estiver carregado.
@@ -47,7 +48,7 @@ export default function DashboardTeamLayout({ children }: { children: React.Reac
   // Se useRequireOnboarding já redirecionou, este código pode não ser alcançado para usuários não onboarded.
   // Mas como uma dupla checagem, ou se o hook for desabilitado:
   const metadata = user.clientMetadata as OnboardingClientMetadata | undefined;
-  const teams = user.teams;
+  // const teams = user.teams; // Removed: incorrect property access and conditional location
   
   // Se não tem flag de onboarded E não tem times, bloqueia (esperando o hook redirecionar ou usuário ser convidado)
   if (!metadata?.onboarded && (!teams || teams.length === 0)) {
