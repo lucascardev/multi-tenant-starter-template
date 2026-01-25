@@ -7,10 +7,10 @@ export function middleware(request: NextRequest) {
   
   if (url.pathname.startsWith('/auth/')) {
       const newUrl = url.clone();
-      // Redirect /auth/callback -> /handler/sign-in (Invite Link Flow)
-      // We send them to sign-in so they can authenticate/register and the SDK handles the 'code'.
+      // Redirect /auth/callback -> /handler/team-invitation (Correct Stack Auth Flow)
+      // This is the specific handler for processing team invites.
       if (url.pathname === '/auth/callback') {
-          newUrl.pathname = '/handler/sign-in';
+          newUrl.pathname = '/handler/team-invitation';
       } else {
           // General fallback: /auth/foo -> /handler/foo
           newUrl.pathname = url.pathname.replace(/^\/auth/, '/handler');
