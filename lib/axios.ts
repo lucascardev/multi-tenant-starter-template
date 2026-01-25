@@ -46,6 +46,17 @@ apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) =>
   }
   // FIM DA SIMULAÇÃO
 
+  // INJEÇÃO DE CONTEXTO DE TIME (x-stack-team-id)
+  // Tenta extrair o Team ID da URL atual (ex: /dashboard/team-uuid-123)
+  if (typeof window !== "undefined") {
+      const dbMatch = window.location.pathname.match(/\/dashboard\/([^/]+)/);
+      if (dbMatch && dbMatch[1]) {
+          const teamId = dbMatch[1];
+          config.headers['x-stack-team-id'] = teamId;
+          // logger.info("Injetando x-stack-team-id:", teamId);
+      }
+  }
+
   if (tokenToSend) {
     // O token real (accessToken) geralmente NÃO inclui "Bearer ".
     // O token simulado pode ou não, dependendo de como seu backend o trata.
