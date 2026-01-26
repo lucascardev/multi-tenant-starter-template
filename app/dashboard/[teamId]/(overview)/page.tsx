@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@stackframe/stack';
 import { useParams, useRouter } from 'next/navigation';
 import apiClient from '@/lib/axios';
-import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle, MessageSquareOff, Bot, Lightbulb, CheckCircle2, Shield, Calendar, CreditCard, ExternalLink } from 'lucide-react';
+import { BarChart4, Users, Locate, MessageSquareText, AlertTriangle, MessageSquareOff, Bot, Lightbulb, CheckCircle2, Shield, Calendar, CreditCard, ExternalLink, Brain } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -577,6 +577,33 @@ export default function TeamDashboardPage() {
                 <p className="text-sm text-muted-foreground">
                     A Clara pode responder automaticamente mensagens que ficaram sem leitura, garantindo que nenhum cliente fique esperando.
                 </p>
+            </CardContent>
+        </Card>
+
+        {/* NEW REMINDER TOOL CARD */}
+         <Card className="bg-purple-50/50 dark:bg-purple-950/10 border-purple-200 dark:border-purple-900 col-span-1 md:col-span-2">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-purple-700 dark:text-purple-400">
+                    <Brain className="h-4 w-4" />
+                    Agendamento ativo 🧠
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                        <p className="text-sm text-muted-foreground mb-2">
+                            Transforme seu chat pessoal em um painel de controle. Mande mensagens para a clara criar lembretes ou dar comandos no futuro.
+                        </p>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                        <code className="block rounded bg-white dark:bg-black/20 px-[0.5rem] py-[0.3rem] font-mono text-xs font-semibold border border-purple-200 dark:border-purple-800">
+                            "Me Lembrar de pagar luz amanhã"
+                        </code>
+                        <code className="block rounded bg-white dark:bg-black/20 px-[0.5rem] py-[0.3rem] font-mono text-xs font-semibold border border-purple-200 dark:border-purple-800">
+                            "Me faça um relatorio de mensagens e me mande todos os dias as 20:00"
+                        </code>
+                    </div>
+                </div>
             </CardContent>
         </Card>
       </div>
