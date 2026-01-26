@@ -2,7 +2,7 @@
 
 import SidebarLayout, { SidebarItem } from "@/components/sidebar-layout";
 import { SelectedTeamSwitcher, useUser } from "@stackframe/stack";
-import { BadgePercent, BarChart4, Columns3, Globe, Locate, Settings2, ShoppingBag, Users, Shield } from "lucide-react";
+import { BadgePercent, BarChart4, Columns3, Globe, Locate, Settings2, ShoppingBag, Users, Shield, ListTodo } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useRequireOnboarding } from "@/app/onboarding-hooks"; // IMPORTAR O HOOK
 import React from "react"; // Importar React para React.ReactNode
@@ -17,6 +17,8 @@ const navigationItems: SidebarItem[] = [
   { name: "Pessoas meu time", href: "/people", icon: Users, type: "item" },
   { name: "Integração", href: "/integrations", icon: Columns3, type: "item" },
   { name: "WhatsApp", href: "/regions", icon: Locate, type: "item" },
+  { type: 'label', name: 'Automação' },
+  { name: "Tarefas Internas", href: "/tasks", icon: ListTodo, type: "item" },
   { type: 'label', name: 'Financeiro' },
   { name: "Faturas", href: "/revenue", icon: BarChart4, type: "item" },
   { name: "Indicação", href: "/discounts", icon: BadgePercent, type: "item" },
