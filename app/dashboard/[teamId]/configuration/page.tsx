@@ -403,8 +403,12 @@ export default function AiConfigurationPage() {
 		fetchPersonasAndSubscription()
 	}, [fetchPersonasAndSubscription])
 
-	const handleTemplateChange = (templateKey: string) => {
-		setSelectedTemplate(templateKey)
+    // Safeguard Template Selection
+    const [pendingTemplate, setPendingTemplate] = useState<string | null>(null);
+    const [showTemplateConfirm, setShowTemplateConfirm] = useState(false);
+
+    const applyTemplate = (templateKey: string) => {
+        setSelectedTemplate(templateKey)
 		// Usa apiTemplates em vez do hardcoded personaTemplates
         // Se a API falhar, pode cair no fallback (personaTemplates) ou vazio
         const template = apiTemplates[templateKey] || personaTemplates[templateKey]
@@ -416,8 +420,34 @@ export default function AiConfigurationPage() {
 				customAiName: prev.customAiName, // Mantém o nome customizado se já estava sendo editado
 				businessTypeForTemplate: templateKey,
 			}))
+            toast.success("Template aplicado com sucesso!");
 		}
+    }
+
+	const handleTemplateChange = (templateKey: string) => {
+        // Check if form is dirty (simple check: if instructions are not empty and != initial)
+        // Or cleaner: If we are creating a new persona, assume user might have typed something. 
+        // If editing, maybe safeguards are less critical IF they haven't touched fields? 
+        // For simplicity: Always confirm if ANY text field has content that isn't default.
+        
+        const hasContent = instructionFormData.identityObjective.length > 5 || 
+                           instructionFormData.knowledgeBase.some(k => k.title.length > 0);
+
+        if (hasContent && templateKey !== 'generico' && selectedTemplate !== templateKey) {
+            setPendingTemplate(templateKey);
+            setShowTemplateConfirm(true);
+        } else {
+            applyTemplate(templateKey);
+        }
 	}
+
+    const confirmTemplateChange = () => {
+        if (pendingTemplate) {
+            applyTemplate(pendingTemplate);
+            setPendingTemplate(null);
+            setShowTemplateConfirm(false);
+        }
+    }
 
 	const handleInstructionInputChange = (
 		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -1745,6 +1775,24 @@ export default function AiConfigurationPage() {
 					</form>
 				</DialogContent>
 			</Dialog>
+            
+            {/* Template Change Confirmation Dialog */}
+            <AlertDialog open={showTemplateConfirm} onOpenChange={setShowTemplateConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Ao aplicar um novo template, todas as instruções atuais (identidade, objetivo, respostas) serão substituídas pelas do modelo escolhido. 
+                            <br/><br/>
+                            Deseja continuar?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => { setPendingTemplate(null); setSelectedTemplate('generico'); }}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmTemplateChange} className="bg-violet-600 hover:bg-violet-700">Substituir Dados</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 			{subscriptionInfo &&
 				personas.length >= subscriptionInfo.maxPersonas &&
 				!editingPersona && (
