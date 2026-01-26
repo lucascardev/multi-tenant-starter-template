@@ -51,9 +51,17 @@ export default function TasksPage() {
                 apiClient.get('/scheduled-messages'),
                 apiClient.get('/instances')
             ]);
-            setTasks(tasksRes.data);
-            setInstances(instancesRes.data);
-            if (instancesRes.data.length > 0) {
+            console.log("Tasks Response:", tasksRes.data);
+            console.log("Instances Response:", instancesRes.data);
+
+            const tasksData = tasksRes.data;
+            const instancesData = instancesRes.data.instances || instancesRes.data || [];
+
+            setTasks(Array.isArray(tasksData) ? tasksData : []);
+            setInstances(Array.isArray(instancesData) ? instancesData : []);
+            
+            // Auto-select first instance if available
+            if (Array.isArray(instancesData) && instancesData.length > 0) {
                 // Default to first instance if not set
                // setSelectedInstance(instancesRes.data[0].id);
             }
