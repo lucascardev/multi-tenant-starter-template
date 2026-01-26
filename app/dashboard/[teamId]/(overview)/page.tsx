@@ -43,6 +43,10 @@ interface DashboardStats {
   monthlyPrice: number;
   price: number;
   interval: 'month' | 'year';
+  tokensUsed: number;
+  maxTokens: number;
+  graceTokens: number;
+  additionalTokens: number;
 }
 
 interface InstanceStatusSummary {
@@ -182,6 +186,10 @@ export default function TeamDashboardPage() {
         monthlyPrice: subData?.price_monthly || 0,
         price: subData?.price || subData?.price_monthly || 0,
         interval: subData?.interval || 'month',
+        tokensUsed: subData?.tokens_used ?? 0,
+        maxTokens: subData?.max_tokens_monthly ?? 1000000,
+        graceTokens: subData?.grace_tokens_count ?? 100000,
+        additionalTokens: subData?.additional_tokens ?? 0,
       });
 
       setInstanceSummary(
@@ -220,6 +228,10 @@ export default function TeamDashboardPage() {
             monthlyPrice: MOCK_DASHBOARD_DATA.period.price_monthly,
             price: MOCK_DASHBOARD_DATA.period.price,
             interval: MOCK_DASHBOARD_DATA.period.interval as 'month' | 'year',
+            tokensUsed: 500000,
+            maxTokens: 1000000,
+            graceTokens: 100000,
+            additionalTokens: 0,
           });
           setInstanceSummary(MOCK_DASHBOARD_DATA.instances.map((inst: any) => ({
              id: inst.id, instance_name: inst.instance_name, status: inst.status,
@@ -340,6 +352,12 @@ export default function TeamDashboardPage() {
              <CardDescription>Monitore seus limites mensais</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <UsageProgressBar 
+                label="Consumo de Tokens (Energia IA)" 
+                value={stats?.tokensUsed ?? 0}
+                max={(stats?.maxTokens ?? 1000000) + (stats?.additionalTokens ?? 0)}
+                graceBuffer={stats?.graceTokens ?? 0}
+            />
             <UsageProgressBar 
                 label="Mensagens Enviadas" 
                 value={stats?.messagesSent ?? 0}
