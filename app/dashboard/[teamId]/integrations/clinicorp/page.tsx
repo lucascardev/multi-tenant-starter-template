@@ -224,6 +224,13 @@ export default function ClinicorpIntegrationPage() {
 
                     {/* Credentials Form */}
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                        <div className="bg-blue-500/5 p-4 rounded-xl border border-blue-500/10 mb-4">
+                            <p className="text-xs text-blue-400 flex items-center gap-2">
+                                <Shield className="w-3 h-3" />
+                                <strong>Nota de Segurança:</strong> A integração via API Legacy requer Usuário e Senha. Chaves de API ainda não são suportadas neste endpoint.
+                            </p>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              <div className="space-y-2">
                                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Usuário</Label>
@@ -329,8 +336,8 @@ export default function ClinicorpIntegrationPage() {
                     id="confirm"
                     checked={form.enableAppointmentConfirmation}
                     onChange={c => handleChange('enableAppointmentConfirmation', c)}
-                    label="Confirmação Automática"
-                    desc="Envia mensagens via WhatsApp para confirmar agendamentos."
+                    label="Confirmação Inteligente (WhatsApp)"
+                    desc="A Clara usará o Google Calendar (espelho) para confirmar agendamentos via WhatsApp."
                     icon={Calendar}
                 />
 
@@ -338,8 +345,8 @@ export default function ClinicorpIntegrationPage() {
                     id="return"
                     checked={form.enableReturnCallMessages}
                     onChange={c => handleChange('enableReturnCallMessages', c)}
-                    label="Reativação (Retorno)"
-                    desc="Contata pacientes ausentes há mais de 6 meses."
+                    label="Reativação de Ex-Pacientes"
+                    desc="Envia mensagens para pacientes sem retorno há mais de 6 meses."
                     icon={MessageSquare}
                 />
 
@@ -347,8 +354,8 @@ export default function ClinicorpIntegrationPage() {
                     id="budget"
                     checked={form.enableBudgetFollowupMessages}
                     onChange={c => handleChange('enableBudgetFollowupMessages', c)}
-                    label="Follow-up Orçamentos"
-                    desc="Acompanha orçamentos não fechados automaticamente."
+                    label="Recuperação de Orçamentos"
+                    desc="Acompanha orçamentos em aberto para tentar o fechamento."
                     icon={DollarSign}
                 />
             </GlassCard>
