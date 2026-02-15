@@ -261,22 +261,30 @@ export default function ClinicorpIntegrationPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">ID Assinante</Label>
-                                <Input 
-                                    className="h-12 bg-background/50 border-white/10 rounded-xl font-mono text-sm" 
-                                    placeholder="12345" 
-                                    value={form.subscriberId}
-                                    onChange={e => handleChange('subscriberId', e.target.value)}
-                                />
+                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">ID Assinante (Auto)</Label>
+                                <div className="relative">
+                                    <Zap className="absolute left-3 top-3 w-4 h-4 text-emerald-500" />
+                                    <Input 
+                                        className="pl-9 h-12 bg-white/5 border-white/5 rounded-xl font-mono text-sm text-muted-foreground cursor-not-allowed" 
+                                        placeholder="Auto-detectado..." 
+                                        value={form.subscriberId || ""}
+                                        readOnly
+                                        disabled
+                                    />
+                                </div>
                              </div>
                              <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">ID Empresa</Label>
-                                <Input 
-                                    className="h-12 bg-background/50 border-white/10 rounded-xl font-mono text-sm" 
-                                    placeholder="67890" 
-                                    value={form.companyId}
-                                    onChange={e => handleChange('companyId', e.target.value)}
-                                />
+                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">ID Empresa (Opcional)</Label>
+                                <div className="relative">
+                                    <Zap className="absolute left-3 top-3 w-4 h-4 text-emerald-500" />
+                                    <Input 
+                                        className="pl-9 h-12 bg-white/5 border-white/5 rounded-xl font-mono text-sm text-muted-foreground cursor-not-allowed" 
+                                        placeholder="Auto-detectado..." 
+                                        value={form.companyId || ""}
+                                        readOnly
+                                        disabled
+                                    />
+                                </div>
                              </div>
                         </div>
                     </div>
