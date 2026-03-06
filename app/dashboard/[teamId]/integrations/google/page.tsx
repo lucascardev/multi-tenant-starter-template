@@ -387,19 +387,15 @@ export default function GoogleIntegrationPage() {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label>Mensagem Personalizada</Label>
-                                            <Textarea 
-                                                placeholder="Olá {{cliente}}, confirmo seu horário para {{data}} às {{hora}}?"
-                                                rows={3}
-                                                value={googleConfig.confirmationMessageTemplate || ""}
-                                                onChange={(e) => setGoogleConfig(prev => ({...prev, confirmationMessageTemplate: e.target.value}))}
-                                            />
-                                             <div className="text-xs text-muted-foreground space-x-2">
-                                                <span>Variáveis:</span>
-                                                <Badge variant="outline" className="text-[10px]">{`{{cliente}}`}</Badge>
-                                                <Badge variant="outline" className="text-[10px]">{`{{data}}`}</Badge>
-                                                <Badge variant="outline" className="text-[10px]">{`{{hora}}`}</Badge>
+                                        <div className="space-y-4">
+                                            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <MessageSquare className="h-5 w-5 text-primary" />
+                                                    <h5 className="font-semibold text-primary">Mensagens Geradas por I.A.</h5>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Para garantir a máxima naturalidade e evitar que o WhatsApp detecte padrões de robô, a Clara agora escreve cada mensagem de confirmação de forma única, amigável e contextualmente rica. Não é mais necessário configurar templates fixos.
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -460,14 +456,16 @@ export default function GoogleIntegrationPage() {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label>Mensagem Personalizada</Label>
-                                             <Textarea 
-                                                placeholder="Lembrete: Você tem uma consulta amanhã às {{hora}}."
-                                                rows={3}
-                                                value={googleConfig.reminderMessageTemplate || ""}
-                                                onChange={(e) => setGoogleConfig(prev => ({...prev, reminderMessageTemplate: e.target.value}))}
-                                            />
+                                        <div className="space-y-4">
+                                            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <MessageSquare className="h-5 w-5 text-primary" />
+                                                    <h5 className="font-semibold text-primary">Mensagens Geradas por I.A.</h5>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    A Clara utilizará sua Inteligência Artificial para gerar lembretes humanizados e exclusivos para cada paciente, garantindo uma melhor taxa de engajamento e evitando bloqueios por spam.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
