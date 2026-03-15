@@ -190,7 +190,25 @@ export default function WhatsAppInstancesPage() {
 						setCurrentQrCodeValue(
 							updatedDialogInstance.qr_code || null
 						)
-						// Lógica para fechar o dialog se conectado etc., já está no useEffect do QR polling
+						
+						// React to status changes
+						if (updatedDialogInstance.status === 'connected' && qrDialogInstance.status !== 'connected') {
+							toast.success(`Instância "${updatedDialogInstance.instance_name}" conectada com sucesso!`)
+							setIsQrDialogOpen(false)
+						} else if ((updatedDialogInstance.status === 'disconnected' || updatedDialogInstance.status === 'error') && 
+                                   (qrDialogInstance.status === 'needs_qr' || qrDialogInstance.status === 'connecting')) {
+							toast.error(`Instância "${updatedDialogInstance.instance_name}" ${updatedDialogInstance.status === 'error' ? 'encontrou um erro' : 'foi desconectada'}. Detalhe: ${updatedDialogInstance.last_status_message || ''}`)
+							setIsQrDialogOpen(false)
+						} else if (updatedDialogInstance.status !== 'needs_qr' && updatedDialogInstance.status !== 'connecting') {
+							setIsQrDialogOpen(false)
+						}
+
+						// Gerencia o state do Spinner
+						setIsQrLoading(
+							(updatedDialogInstance.status === 'needs_qr' && !updatedDialogInstance.qr_code) ||
+							updatedDialogInstance.status === 'connecting' ||
+							updatedDialogInstance.status === 'pending_creation'
+						)
 					} else {
 						// Instância do dialog não existe mais
 						setIsQrDialogOpen(false)
@@ -250,178 +268,8 @@ export default function WhatsAppInstancesPage() {
 		return () => clearInterval(intervalId)
 	}, [user, team, fetchAllData, instances]) // Re-run effect when 'instances' changes (to adapt rate)
 
-	// Polling focado no QR Code quando o dialog está aberto
-	useEffect(() => {
-		let qrIntervalId: NodeJS.Timeout | null = null
-
-		const pollSpecificInstanceQr = async () => {
-			if (
-				!isQrDialogOpen ||
-				!qrDialogInstance ||
-				qrDialogInstance.status !== 'needs_qr'
-			) {
-				if (qrIntervalId) clearInterval(qrIntervalId)
-				// logger.info(`Poll QR: Parando. DialogOpen: ${isQrDialogOpen}, InstanceStatus: ${qrDialogInstance?.status}`);
-				return
-			}
-			// logger.info(`Poll QR: Buscando dados para instância ${qrDialogInstance.id}`);
-			setIsQrLoading(true) // Ativa loading específico do QR
-			try {
-				const response = await apiClient.get<{ instance: Instance }>(
-					`/instances/${qrDialogInstance.id}`
-				)
-				const updatedInstance = response.data.instance
-
-				if (
-					updatedInstance &&
-					qrDialogInstance?.id === updatedInstance.id
-				) {
-					// Confirma que ainda é a mesma instância
-					setQrDialogInstance(updatedInstance) // Atualiza a instância no estado do dialog
-					setCurrentQrCodeValue(updatedInstance.qr_code || null)
-
-					if (updatedInstance.status === 'connected') {
-						toast.success(
-							`Instância "${updatedInstance.instance_name}" conectada!`
-						)
-						setIsQrDialogOpen(false) // Fecha o dialog
-						fetchAllData() // Força um refresh da lista principal
-					} else if (
-						updatedInstance.status === 'error' ||
-						updatedInstance.status === 'disconnected'
-					) {
-						toast.error(
-							`Instância "${updatedInstance.instance_name}" ${
-								updatedInstance.status
-							}. ${updatedInstance.last_status_message || ''}`
-						)
-						setIsQrDialogOpen(false)
-						fetchAllData()
-					} else if (updatedInstance.status !== 'needs_qr') {
-						// Se o status mudou para algo que não é mais 'needs_qr' (ex: 'connecting')
-						// O polling geral da lista deve pegar, mas podemos fechar o dialog se quisermos
-						// setIsQrDialogOpen(false); // Opcional
-					}
-				}
-			} catch (error) {
-				logger.error(
-					`Poll QR: Erro ao buscar dados da instância ${qrDialogInstance.id}:`,
-					error
-				)
-				// Poderia adicionar um toast se o polling do QR falhar repetidamente
-			} finally {
-				setIsQrLoading(false)
-			}
-		}
-
-		if (
-			isQrDialogOpen &&
-			qrDialogInstance &&
-			qrDialogInstance.status === 'needs_qr'
-		) {
-			pollSpecificInstanceQr() // Busca imediata
-			qrIntervalId = setInterval(
-				pollSpecificInstanceQr,
-				QR_POLLING_INTERVAL
-			)
-		}
-
-		return () => {
-			if (qrIntervalId) clearInterval(qrIntervalId)
-		}
-	}, [isQrDialogOpen, qrDialogInstance, fetchAllData])
-
-	useEffect(() => {
-		let intervalId: NodeJS.Timeout | null = null
-		const pollInstanceData = async (instanceId: string) => {
-			if (
-				!isQrDialogOpen ||
-				!qrDialogInstance ||
-				qrDialogInstance.id !== instanceId
-			) {
-				// Se o dialog fechou ou a instância mudou, para o polling
-				if (intervalId) clearInterval(intervalId)
-				return
-			}
-			try {
-				// logger.info(`Polling for instance ${instanceId}`);
-				const response = await apiClient.get<{ instance: Instance }>(
-					`/instances/${instanceId}`
-				)
-				const updatedInstance = response.data.instance
-
-				if (updatedInstance) {
-					// Atualiza a instância específica na lista de instâncias
-					setInstances((prev) =>
-						prev.map((inst) =>
-							inst.id === instanceId ? updatedInstance : inst
-						)
-					)
-
-					// Atualiza os dados da instância no dialog do QR
-					if (qrDialogInstance?.id === instanceId) {
-						setQrDialogInstance(updatedInstance)
-						setCurrentQrCodeValue(updatedInstance.qr_code || null)
-						setIsQrLoading(false) // Para o loading após a primeira tentativa de buscar QR
-
-						if (updatedInstance.status === 'connected') {
-							toast.success(
-								`Instância "${updatedInstance.instance_name}" conectada com sucesso!`
-							)
-							setIsQrDialogOpen(false)
-						} else if (
-							updatedInstance.status === 'disconnected' ||
-							updatedInstance.status === 'error'
-						) {
-							toast.error(
-								`Instância "${updatedInstance.instance_name}" ${
-									updatedInstance.status === 'error'
-										? 'encontrou um erro'
-										: 'foi desconectada'
-								}. Detalhe: ${
-									updatedInstance.last_status_message || ''
-								}`
-							)
-							setIsQrDialogOpen(false)
-						} else if (
-							updatedInstance.status !== 'needs_qr' &&
-							updatedInstance.status !== 'connecting'
-						) {
-							// Se o status mudou para algo que não requer QR, fecha o dialog
-							setIsQrDialogOpen(false)
-						}
-					}
-				}
-			} catch (error) {
-				logger.error(
-					`Erro no polling para instância ${instanceId}:`,
-					error
-				)
-				setIsQrLoading(false)
-				// Não mostra toast para erro de polling para não ser invasivo,
-				// mas pode ser útil se o QR não carregar de jeito nenhum.
-			}
-		}
-
-		if (
-			isQrDialogOpen &&
-			qrDialogInstance &&
-			(qrDialogInstance.status === 'needs_qr' ||
-				qrDialogInstance.status === 'connecting')
-		) {
-			setIsQrLoading(!qrDialogInstance.qr_code) // Mostra loading se não tem QR e precisa
-			pollInstanceData(qrDialogInstance.id) // Busca imediata
-			intervalId = setInterval(
-				() => pollInstanceData(qrDialogInstance.id!),
-				QR_POLLING_INTERVAL
-			)
-		}
-
-		return () => {
-			if (intervalId) clearInterval(intervalId)
-		}
-	}, [isQrDialogOpen, qrDialogInstance]) // Depende apenas destes para controlar o polling
-
+	// --- (QR POLLING REMOVIDO EM FAVOR DO ADAPTIVE POLLING fetchAllData) ---
+	
 	const handleCreateInstance = async (e: FormEvent) => {
 		e.preventDefault()
 		if (!newInstanceName.trim() || !selectedPersonaId) {
@@ -564,10 +412,19 @@ export default function WhatsAppInstancesPage() {
 		setConnectingInstances((prev) => new Set(prev).add(instanceId))
 		setIsSubmittingAction(true)
 		
-		// OPTIMISTIC UPDATE: Set status to 'connecting' locally immediately
-		setInstances(prev => prev.map(inst => 
-			inst.id === instanceId ? { ...inst, status: 'connecting' } : inst
-		))
+		// OPTIMISTIC UPDATE E AUTO-OPEN DO DIALOG
+		let targetInstance: Instance | null = null
+		setInstances(prev => prev.map(inst => {
+			if (inst.id === instanceId) {
+				targetInstance = { ...inst, status: 'connecting' }
+				return targetInstance
+			}
+			return inst
+		}))
+
+		if (targetInstance) {
+			handleOpenQrDialog(targetInstance)
+		}
 
 		try {
 			const response = await apiClient.post(
