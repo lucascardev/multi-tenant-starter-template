@@ -119,7 +119,7 @@ export default async function IndexPage() {
 		<>
 			<Hero
 				capsuleText='Falar com a Equipe'
-				capsuleLink='https://wa.me/5571999999999?text=Ol%C3%A1%2C%20gostaria%20de%20falar%20com%20um%20consultor%20sobre%20a%20Clara%21'
+				capsuleLink='https://wa.me/5577999457636?text=Ol%C3%A1%2C%20gostaria%20de%20falar%20com%20um%20consultor%20sobre%20a%20Clara%21'
 				title='A IA feita para trabalhar com você.'
 				subtitle='Construída para atender as necessidades de sua clínica.'
                 subtitlePrefix='Construída para atender as necessidades de'
@@ -127,7 +127,7 @@ export default async function IndexPage() {
 				primaryCtaText='Inscreva-se'
 				primaryCtaLink={stackServerApp.urls.signUp}
 				secondaryCtaText='Teste a Clara na Prática'
-				secondaryCtaLink='https://wa.me/5571999999999?text=Ol%C3%A1%2C%20gostaria%20de%20testar%20a%20Clara%21'
+				secondaryCtaLink='https://wa.me/5571987632774?text=Ol%C3%A1%2C%20gostaria%20de%20testar%20a%20Clara%21'
 			/>
 			<ScrollFadeIn delay={0.2}>
 				<div className="bg-muted/30">
