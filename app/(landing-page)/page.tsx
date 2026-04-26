@@ -171,6 +171,7 @@ export default async function IndexPage() {
 					},
 				]}
 			/>
+			</ScrollFadeIn>
 
 			<div id='how-it-works' />
 			<ScrollFadeIn>
