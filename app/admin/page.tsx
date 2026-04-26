@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, Trash2, Shield, Key, ArrowLeft, Users as UsersIcon } from "lucide-react";
+import { Copy, Trash2, Shield, Key, ArrowLeft, Users as UsersIcon, ClipboardList, Edit, Save, X } from "lucide-react";
 
 interface AdminUser {
   id: string;
@@ -68,6 +68,12 @@ export default function AdminDashboardPage() {
   // General Access State
   const [accessDenied, setAccessDenied] = useState(false);
 
+  // State for Plans
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [editPlanData, setEditPlanData] = useState<any>({});
+
   // --- Fetch Functionality ---
 
   const fetchAdmins = async () => {
@@ -88,9 +94,26 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchPlans = async () => {
+    setLoadingPlans(true);
+    try {
+      const res = await apiClient.get("/admin/plans");
+      setPlans(res.data);
+    } catch (error: any) {
+      // Don't toast if access denied already handled
+      if (error.response?.status !== 403) {
+        toast.error("Failed to fetch plans.");
+      }
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
+
   useEffect(() => {
     // Initial fetch to check access
-    fetchAdmins();
+    fetchAdmins().then(() => {
+        fetchPlans();
+    });
   }, []);
 
   // --- Handlers ---
@@ -137,6 +160,17 @@ export default function AdminDashboardPage() {
       fetchAdmins();
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to add admin.");
+    }
+  };
+
+  const handleSavePlan = async (id: string) => {
+    try {
+      await apiClient.patch(`/admin/plans/${id}`, editPlanData);
+      toast.success("Plano atualizado com sucesso.");
+      setEditingPlanId(null);
+      fetchPlans();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.response?.data?.error || "Failed to update plan.");
     }
   };
 
@@ -235,6 +269,9 @@ export default function AdminDashboardPage() {
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <UsersIcon className="h-4 w-4" /> Manage Users
+          </TabsTrigger>
+          <TabsTrigger value="plans" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" /> Planos
           </TabsTrigger>
         </TabsList>
 
@@ -549,6 +586,141 @@ export default function AdminDashboardPage() {
 
                 </CardContent>
             </Card>
+        </TabsContent>
+
+        {/* --- Plans Management Tab --- */}
+        <TabsContent value="plans">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gerenciar Planos</CardTitle>
+              <CardDescription>
+                Ajuste os preços, nomes e limites dos planos disponíveis.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingPlans ? (
+                <p>Carregando planos...</p>
+              ) : (
+                <div className="space-y-6">
+                  {plans.map((plan) => (
+                    <div key={plan.id} className="rounded-lg border p-4 bg-card">
+                      {editingPlanId === plan.id ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-lg">Editando: {plan.plan_name}</h3>
+                            <Button variant="ghost" size="sm" onClick={() => setEditingPlanId(null)}>
+                              <X className="h-4 w-4 mr-2" /> Cancelar
+                            </Button>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Nome do Plano</label>
+                              <Input 
+                                value={editPlanData.plan_name || ''} 
+                                onChange={(e) => setEditPlanData({...editPlanData, plan_name: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Preço Mensal</label>
+                              <Input 
+                                type="number" 
+                                value={editPlanData.price_monthly ?? ''} 
+                                onChange={(e) => setEditPlanData({...editPlanData, price_monthly: Number(e.target.value)})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Preço Anual</label>
+                              <Input 
+                                type="number" 
+                                value={editPlanData.price_yearly ?? ''} 
+                                onChange={(e) => setEditPlanData({...editPlanData, price_yearly: Number(e.target.value)})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Max Mensagens</label>
+                              <Input 
+                                type="number" 
+                                value={editPlanData.max_messages_count ?? ''} 
+                                onChange={(e) => setEditPlanData({...editPlanData, max_messages_count: Number(e.target.value)})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Max Clientes (Atendimentos)</label>
+                              <Input 
+                                type="number" 
+                                value={editPlanData.max_customers_count ?? ''} 
+                                onChange={(e) => setEditPlanData({...editPlanData, max_customers_count: Number(e.target.value)})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Max Instâncias (WhatsApp)</label>
+                              <Input 
+                                type="number" 
+                                value={editPlanData.max_instances_count ?? ''} 
+                                onChange={(e) => setEditPlanData({...editPlanData, max_instances_count: Number(e.target.value)})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Max Personas</label>
+                              <Input 
+                                type="number" 
+                                value={editPlanData.max_personas_count ?? ''} 
+                                onChange={(e) => setEditPlanData({...editPlanData, max_personas_count: Number(e.target.value)})}
+                              />
+                            </div>
+                          </div>
+                          
+                          <Button onClick={() => handleSavePlan(plan.id)} className="w-full sm:w-auto">
+                            <Save className="h-4 w-4 mr-2" /> Salvar Alterações
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-xl">{plan.plan_name}</h3>
+                              {!plan.is_active && <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold uppercase">Inativo</span>}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{plan.description}</p>
+                            
+                            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                              <div>
+                                <span className="text-muted-foreground block text-xs uppercase">Preço Mensal</span>
+                                <span className="font-medium">R$ {plan.price_monthly?.toFixed(2) || '0.00'}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground block text-xs uppercase">Preço Anual</span>
+                                <span className="font-medium">R$ {plan.price_yearly?.toFixed(2) || '0.00'}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground block text-xs uppercase">Limites Base</span>
+                                <span className="font-medium">{plan.max_customers_count} atendimentos</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground block text-xs uppercase">Recursos</span>
+                                <span className="font-medium">{plan.max_instances_count} WhatsApp | {plan.max_personas_count} Persona(s)</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setEditingPlanId(plan.id);
+                              setEditPlanData(plan);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" /> Editar Plano
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
