@@ -74,7 +74,7 @@ const MOCK_PLANS: SubscriptionPlan[] = [
 async function fetchPlans(): Promise<SubscriptionPlan[]> {
   try {
     const baseUrl = process.env.NODE_ENV === 'production' 
-        ? "https://api.clara-ia.space" 
+        ? "https://api.clara-ia.online" 
         : "http://localhost:3030";
         
     const res = await fetch(`${baseUrl}/api/public/plans`, { cache: "no-store", next: { revalidate: 0 } });
