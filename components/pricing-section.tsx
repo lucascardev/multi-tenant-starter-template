@@ -44,30 +44,17 @@ export function PricingSection({
           </Label>
           <Switch id="billing-mode" checked={isYearly} onCheckedChange={setIsYearly} />
           <Label htmlFor="billing-mode" className={isYearly ? "font-bold" : ""}>
-            Anual <span className="text-green-500 font-normal text-xs ml-1">
-                {(() => {
-                    const maxDiscount = plans.reduce((max, plan) => {
-                        if (plan.price_yearly && plan.price_monthly) {
-                            const monthlyCost = plan.price_monthly * 12;
-                            const discount = ((monthlyCost - plan.price_yearly) / monthlyCost) * 100;
-                            return Math.max(max, discount);
-                        }
-                        return max;
-                    }, 0);
-                    return `(Economize até ${Math.round(maxDiscount)}%)`;
-                })()}
-            </span>
+            Anual <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold ml-1 uppercase">20% Off</span>
           </Label>
         </div>
       </div>
 
       <div className="mx-auto grid justify-center gap-4 sm:grid-cols-2 md:max-w-5xl md:grid-cols-3">
         {plans.map((plan) => {
-          const price = isYearly
-            ? plan.price_yearly
-              ? plan.price_yearly / 12 // Show monthly cost for yearly plan
-              : plan.price_monthly
-            : plan.price_monthly;
+          const monthlyPrice = plan.price_monthly || 0;
+          const discountedPrice = monthlyPrice * 0.8; // 20% OFF
+          const price = isYearly ? discountedPrice : monthlyPrice;
+          const yearlyTotal = discountedPrice * 12;
 
           const isPopular = plan.plan_name.toLowerCase().includes("básico"); // Logic to highlight a plan
 
@@ -96,14 +83,19 @@ export function PricingSection({
               </CardHeader>
               <CardContent className="flex-1">
                 <div className="mb-4">
-                  <span className="text-4xl font-bold">
+                  {isYearly && (
+                    <div className="text-sm text-muted-foreground line-through mb-1">
+                      {plan.currency === "BRL" ? "R$" : "$"}{monthlyPrice.toFixed(2)}/mês
+                    </div>
+                  )}
+                  <span className="text-4xl font-bold text-primary">
                     {plan.currency === "BRL" ? "R$" : "$"}
-                    {price?.toFixed(2)}
+                    {price.toFixed(2)}
                   </span>
                   <span className="text-muted-foreground">/mês</span>
-                  {isYearly && plan.price_yearly && (
-                    <div className="text-sm text-green-600 mt-1 font-medium">
-                        Faturado R${plan.price_yearly.toFixed(2)} anualmente
+                  {isYearly && (
+                    <div className="text-sm text-green-600 mt-1 font-medium bg-green-50 w-fit px-2 py-1 rounded-md">
+                        Faturado R${yearlyTotal.toFixed(2)} anualmente
                     </div>
                   )}
                 </div>
