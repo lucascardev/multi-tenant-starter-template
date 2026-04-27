@@ -118,7 +118,7 @@ export default async function IndexPage() {
 	return (
 		<>
 			<Hero
-				capsuleText='Falar com a Equipe'
+				capsuleText='Conheça a Clara, sua assistente virtual'
 				capsuleLink='https://wa.me/5577999457636?text=Ol%C3%A1%2C%20gostaria%20de%20falar%20com%20um%20consultor%20sobre%20a%20Clara%21'
 				title='A IA feita para trabalhar com você.'
 				subtitle='Construída para atender as necessidades de sua clínica.'
