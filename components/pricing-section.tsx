@@ -35,6 +35,9 @@ export function PricingSection({
   return (
     <section id="pricing" className="container space-y-6 py-8 md:py-12 lg:py-24">
       <div className="mx-auto flex max-w-6xl flex-col items-center space-y-4 text-center">
+        <div className="bg-primary/10 border border-primary/20 text-primary px-4 py-2 rounded-full inline-flex items-center text-sm font-semibold mb-2 animate-pulse">
+          🎉 Promoção de Lançamento: 40% OFF para os primeiros clientes!
+        </div>
         <h2 className="text-3xl md:text-4xl font-semibold">{title}</h2>
         <p className="max-w-[85%] text-muted-foreground sm:text-lg">{subtitle}</p>
 
@@ -52,9 +55,15 @@ export function PricingSection({
       <div className="mx-auto grid justify-center gap-4 sm:grid-cols-2 md:max-w-5xl md:grid-cols-3">
         {plans.map((plan) => {
           const monthlyPrice = plan.price_monthly || 0;
-          const discountedPrice = monthlyPrice * 0.8; // 20% OFF
-          const price = isYearly ? discountedPrice : monthlyPrice;
-          const yearlyTotal = discountedPrice * 12;
+          const baseYearlyPrice = monthlyPrice * 0.8; // 20% OFF base do anual
+          
+          const promoMultiplier = 0.6; // 40% OFF
+          const finalMonthlyPrice = monthlyPrice * promoMultiplier;
+          const finalYearlyPrice = baseYearlyPrice * promoMultiplier;
+
+          const price = isYearly ? finalYearlyPrice : finalMonthlyPrice;
+          const originalPrice = isYearly ? baseYearlyPrice : monthlyPrice;
+          const yearlyTotal = finalYearlyPrice * 12;
 
           const isPopular = plan.plan_name.toLowerCase().includes("básico"); // Logic to highlight a plan
 
@@ -83,11 +92,12 @@ export function PricingSection({
               </CardHeader>
               <CardContent className="flex-1">
                 <div className="mb-4">
-                  {isYearly && (
-                    <div className="text-sm text-muted-foreground line-through mb-1">
-                      {plan.currency === "BRL" ? "R$" : "$"}{monthlyPrice.toFixed(2)}/mês
-                    </div>
-                  )}
+                  <div className="text-sm text-muted-foreground line-through mb-1 flex items-center gap-2">
+                    {plan.currency === "BRL" ? "R$" : "$"}{originalPrice.toFixed(2)}/mês
+                    <span className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-sm font-bold uppercase no-underline inline-block">
+                      -40% OFF
+                    </span>
+                  </div>
                   <span className="text-4xl font-bold text-primary">
                     {plan.currency === "BRL" ? "R$" : "$"}
                     {price.toFixed(2)}
