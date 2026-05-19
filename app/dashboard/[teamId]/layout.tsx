@@ -4,13 +4,13 @@ import SidebarLayout, { SidebarItem } from "@/components/sidebar-layout";
 import { SelectedTeamSwitcher, useUser } from "@stackframe/stack";
 import { BadgePercent, BarChart4, Columns3, Globe, Locate, Settings2, ShoppingBag, Users, Shield, ListTodo } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useRequireOnboarding } from "@/app/onboarding-hooks"; // IMPORTAR O HOOK
-import React from "react"; // Importar React para React.ReactNode
+import { useRequireOnboarding } from "@/app/onboarding-hooks";
+import React, { useEffect, useState } from "react";
+import apiClient from "@/lib/axios";
 
-import { type OnboardingClientMetadata } from "../../../types/onboarding"; // IMPORTADO AQUI
+import { type OnboardingClientMetadata } from "../../../types/onboarding";
 
-// ... (navigationItems permanece o mesmo)
-const navigationItems: SidebarItem[] = [
+const baseNavigationItems: SidebarItem[] = [
   { name: "Dashboard", href: "/", icon: Globe, type: "item" },
   { type: 'label', name: 'Gerencimento' },
   { name: "Meu Plano", href: "/products", icon: ShoppingBag, type: "item" },
@@ -24,22 +24,26 @@ const navigationItems: SidebarItem[] = [
   { name: "Indicação", href: "/discounts", icon: BadgePercent, type: "item" },
   { type: 'label', name: 'Settings' },
   { name: "Configurações IA", href: "/configuration", icon: Settings2, type: "item" },
-  { name: "Admin Area", href: "/admin", icon: Shield, type: "item", external: true },
 ];
 
+const adminItem: SidebarItem = { name: "Admin Area", href: "/admin", icon: Shield, type: "item", external: true };
 
-export default function DashboardTeamLayout({ children }: { children: React.ReactNode }) { // Renomeado props para children
+
+export default function DashboardTeamLayout({ children }: { children: React.ReactNode }) {
   const params = useParams<{ teamId: string }>();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // useUser agora pode ser chamado sem or:'redirect' aqui, pois o hook de onboarding
-  // e a lógica abaixo cuidarão do redirecionamento se necessário.
-  // Ou mantenha or:'redirect' se preferir que o Stack Auth lide com o não logado primeiro.
-  const user = useUser({ or: "redirect" }); // Mantendo or:redirect para o caso de acesso direto sem sessão
-  const teams = user.useTeams(); // Fix: Call useTeams hook at top level
+  const user = useUser({ or: "redirect" });
+  const teams = user.useTeams();
 
-  // Chama o hook de onboarding. Ele redirecionará para '/onboarding' se necessário.
-  // Só ativa o hook se o usuário estiver carregado.
+  // Verifica se o usuário é admin chamando a API
+  useEffect(() => {
+    apiClient.get('/admin/users')
+      .then(() => setIsAdmin(true))
+      .catch(() => setIsAdmin(false));
+  }, [user?.id]);
+
   useRequireOnboarding(!!user);
 
   // Se useUser ainda está carregando ou user é null (e or:redirect não atuou ainda)
@@ -79,6 +83,10 @@ export default function DashboardTeamLayout({ children }: { children: React.Reac
   }
 
   // Se chegou até aqui, o usuário está logado, onboarded, e o time é válido.
+  const navigationItems = isAdmin
+    ? [...baseNavigationItems, adminItem]
+    : baseNavigationItems;
+
   return (
     <SidebarLayout
       items={navigationItems}
