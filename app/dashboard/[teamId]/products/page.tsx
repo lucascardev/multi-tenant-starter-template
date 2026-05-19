@@ -180,16 +180,25 @@ export default function MyPlanPage() {
           <Card key={plan.id} className={`flex flex-col ${currentPlanId === plan.id && currentSubscription?.status === 'active' ? 'border-2 border-primary ring-2 ring-primary/30 shadow-xl' : 'border-border hover:shadow-md transition-shadow'}`}>
             <CardHeader className="pb-4">
               <CardTitle className="text-xl">{plan.plan_name}</CardTitle>
-              <CardDescription className="text-sm h-12 line-clamp-2">{plan.description}</CardDescription> {/* Altura fixa e line-clamp */}
-              <CardDescription className="text-sm h-12 line-clamp-2">{plan.description}</CardDescription> {/* Altura fixa e line-clamp */}
+              <CardDescription className="text-sm h-12 line-clamp-2">{plan.description}</CardDescription>
               <div className="pt-3">
-                <p className="text-3xl font-bold text-foreground">
-                    R$ {(billingCycle === 'yearly' ? plan.price_monthly * 0.8 : plan.price_monthly).toFixed(2)}
-                    <span className="text-sm font-normal text-muted-foreground ml-1">/mês</span>
+                {/* Preço original riscado com badge -40% OFF */}
+                <div className="text-sm text-muted-foreground line-through mb-1 flex items-center gap-2">
+                  R$ {(billingCycle === 'yearly' ? plan.price_monthly * 0.8 : plan.price_monthly).toFixed(2)}/mês
+                  {plan.price_monthly > 0 && (
+                    <span className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-sm font-bold uppercase no-underline inline-block">
+                      -40% OFF
+                    </span>
+                  )}
+                </div>
+                {/* Preço final com desconto de 40% */}
+                <p className="text-3xl font-bold text-primary">
+                  R$ {(billingCycle === 'yearly' ? plan.price_monthly * 0.8 * 0.6 : plan.price_monthly * 0.6).toFixed(2)}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">/mês</span>
                 </p>
-                {billingCycle === 'yearly' && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Cobrado anualmente (R$ {(plan.price_monthly * 0.8 * 12).toFixed(2)})
+                {billingCycle === 'yearly' && plan.price_monthly > 0 && (
+                    <p className="text-xs text-green-600 mt-1 font-medium bg-green-50 dark:bg-green-900/20 w-fit px-2 py-1 rounded-md">
+                        Faturado R$ {(plan.price_monthly * 0.8 * 0.6 * 12).toFixed(2)} anualmente
                     </p>
                 )}
               </div>
