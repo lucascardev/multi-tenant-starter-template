@@ -118,16 +118,21 @@ export default async function IndexPage() {
 	return (
 		<>
 			<Hero
-				capsuleText='Conheça a Clara, sua assistente virtual'
-				capsuleLink='https://wa.me/5577999457636?text=Ol%C3%A1%2C%20gostaria%20de%20falar%20com%20um%20consultor%20sobre%20a%20Clara%21'
+				capsuleText='⏳ Pré-inscrições Abertas • Novas ativações em breve'
+				capsuleLink='https://wa.me/5577999457636?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20a%20fila%20de%20espera%20da%20Clara%21'
 				title='A IA feita para trabalhar com você.'
 				subtitle='Construída para atender as necessidades de sua clínica.'
-                subtitlePrefix='Construída para atender as necessidades de'
-                typingWords={['sua clínica.', 'sua academia.', 'sua loja.', 'seu negócio.', 'seu salão.']}
-				primaryCtaText='Inscreva-se'
-				primaryCtaLink={stackServerApp.urls.signUp}
-				secondaryCtaText='Teste a Clara na Prática'
-				secondaryCtaLink='https://wa.me/5571987632774?text=Ol%C3%A1%2C%20gostaria%20de%20testar%20a%20Clara%21'
+				subtitlePrefix='Construída para atender as necessidades de'
+				typingWords={['sua clínica.', 'sua academia.', 'sua loja.', 'seu negócio.', 'seu salão.']}
+				notice={{
+					tag: "Pausa Técnica Momentânea",
+					title: "Estamos aprimorando nossa infraestrutura para uma nova fase",
+					description: "Para garantir máxima performance, estabilidade e novas ferramentas de atendimento, as ativações imediatas estão temporariamente em fila. Garanta sua inscrição antecipada para assegurar seu desconto de 40% OFF e prioridade assim que o serviço for reativado.",
+				}}
+				primaryCtaText='Entrar na Fila de Espera (WhatsApp)'
+				primaryCtaLink='https://wa.me/5577999457636?text=Ol%C3%A1%2C%20gostaria%20de%20entrar%20na%20fila%20de%20espera%20da%20Clara%20e%20garantir%20minha%20vaga%20com%2040%25%20OFF%21'
+				secondaryCtaText='Fazer Pré-Cadastro'
+				secondaryCtaLink={stackServerApp.urls.signUp}
 			/>
 			<ScrollFadeIn delay={0.2}>
 				<div className="bg-muted/30">

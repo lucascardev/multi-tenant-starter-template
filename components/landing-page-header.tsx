@@ -34,7 +34,7 @@ function SignInSignUpButtons() {
         href={app.urls.signUp}
         className={buttonVariants({ variant: "default" })}
       >
-        Cadastro
+        Pré-Cadastro
       </Link>
     </>
   );
@@ -67,7 +67,7 @@ function AuthButtons() {
 
 function MobileItems(props: NavProps) {
   return (
-    <div className="fixed inset-0 top-16 z-50 grid h-[calc(100vh-4rem)] grid-flow-row auto-rows-max overflow-auto p-6 pb-32 animate-in slide-in-from-bottom-80 md:hidden">
+    <div className="fixed inset-0 top-24 z-50 grid h-[calc(100vh-6rem)] grid-flow-row auto-rows-max overflow-auto p-6 pb-32 animate-in slide-in-from-bottom-80 md:hidden">
       <div className="relative z-20 grid gap-6 rounded-md bg-popover p-4 text-popover-foreground shadow-md">
         <nav className="grid grid-flow-row auto-rows-max text-sm">
           {props.items?.map((item, index) => (
@@ -124,8 +124,28 @@ export function LandingPageHeader(props: NavProps) {
   const [showMobileMenu, setShowMobileMenu] = React.useState<boolean>(false);
 
   return (
-    <header className="fixed w-full z-50 bg-background/80 px-4 md:px-8 backdrop-blur">
-      <div className="flex h-18 items-center justify-between py-4">
+    <header className="fixed top-0 left-0 w-full z-50 bg-background/80 backdrop-blur border-b">
+      <div className="bg-amber-500/10 dark:bg-amber-950/40 border-b border-amber-500/20 px-3 py-2 text-center text-xs md:text-sm font-medium text-amber-900 dark:text-amber-200">
+        <div className="container flex items-center justify-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Aviso Importante
+          </span>
+          <span>
+            Novas ativações momentaneamente em pausa técnica para expansão.
+          </span>
+          <a
+            href="https://wa.me/5577999457636?text=Ol%C3%A1%2C%20gostaria%20de%20entrar%20na%20fila%20de%20espera%20da%20Clara%20e%20garantir%20meu%20desconto%20de%2040%25%21"
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold hover:opacity-80 transition-opacity ml-1 inline-flex items-center gap-1"
+          >
+            Entrar na Fila com 40% OFF &rarr;
+          </a>
+        </div>
+      </div>
+
+      <div className="flex h-16 items-center justify-between px-4 md:px-8">
         <div className="flex items-center gap-4 md:gap-10">
           <Logo className="hidden md:flex" />
 

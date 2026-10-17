@@ -5,6 +5,7 @@ import Link from "next/link";
 import React, { useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -40,6 +41,12 @@ export function PricingSection({
         </div>
         <h2 className="text-3xl md:text-4xl font-semibold">{title}</h2>
         <p className="max-w-[85%] text-muted-foreground sm:text-lg">{subtitle}</p>
+
+        <div className="max-w-2xl rounded-xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-950/30 p-3.5 text-xs sm:text-sm text-muted-foreground text-center">
+          <p>
+            <strong className="text-foreground">Fila de Espera com Desconto Garantido:</strong> As novas ativações estão temporariamente pausadas para expansão dos servidores. Garanta sua inscrição agora para assegurar prioridade na reativação com os <strong>40% OFF</strong> mantidos.
+          </p>
+        </div>
 
         <div className="flex items-center space-x-4 mt-6">
           <Label htmlFor="billing-mode" className={!isYearly ? "font-bold" : ""}>
@@ -126,16 +133,28 @@ export function PricingSection({
                   </li>
                 </ul>
               </CardContent>
-              <CardFooter>
-                <Link
-                  href={app.urls.signUp}
-                  className={buttonVariants({
-                    variant: isPopular ? "default" : "outline",
-                    className: "w-full",
-                  })}
+              <CardFooter className="flex flex-col gap-2 pt-2">
+                <a
+                  href={`https://wa.me/5577999457636?text=${encodeURIComponent(
+                    `Olá! Gostaria de garantir minha vaga na lista de espera para o plano ${plan.plan_name} com 40% de desconto de lançamento.`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn(
+                    buttonVariants({
+                      variant: isPopular ? "default" : "outline",
+                      className: "w-full",
+                    })
+                  )}
                 >
-                  {isPopular ? "Começar Agora" : "Escolher Plano"}
-                </Link>
+                  Garantir Vaga na Fila (40% OFF)
+                </a>
+                <p className="text-[11px] text-center text-muted-foreground">
+                  Sem cobrança imediata •{" "}
+                  <Link href={app.urls.signUp} className="underline hover:text-foreground">
+                    Fazer pré-cadastro
+                  </Link>
+                </p>
               </CardFooter>
             </Card>
           );

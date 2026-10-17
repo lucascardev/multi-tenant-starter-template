@@ -105,6 +105,9 @@ export function SocialProofCarousel() {
             >
                 Falar com a Clara no WhatsApp
             </a>
+            <p className="text-xs text-muted-foreground">
+                ✨ O número de demonstração está disponível para você experimentar o atendimento. Novas integrações de clínicas entram na fila prioritária.
+            </p>
         </div>
       </div>
     </div>
