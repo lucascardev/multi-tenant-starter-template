@@ -23,15 +23,19 @@ export function Hero(props: {
   secondaryCtaLink: string;
   notice?: HeroNotice;
 }) {
-  const isCapsuleExternal = props.capsuleLink.startsWith("http");
-  const isPrimaryExternal = props.primaryCtaLink.startsWith("http");
-  const isSecondaryExternal = props.secondaryCtaLink.startsWith("http");
+  const isCapsuleExternal = props.capsuleLink?.startsWith("http") ?? false;
+  const isPrimaryExternal = props.primaryCtaLink?.startsWith("http") ?? false;
+  const isSecondaryExternal = props.secondaryCtaLink?.startsWith("http") ?? false;
+
+  const capsuleHref = props.capsuleLink || "#";
+  const primaryHref = props.primaryCtaLink || "#";
+  const secondaryHref = props.secondaryCtaLink || "/handler/sign-up";
 
   return (
     <section className="space-y-6 pt-36 pb-20 md:pt-48 md:pb-28 lg:pt-52 lg:pb-32">
       <div className="container flex max-w-[64rem] flex-col items-center gap-4 text-center">
         <Link
-          href={props.capsuleLink}
+          href={capsuleHref}
           className="rounded-full bg-muted/80 border px-4 py-1.5 text-xs sm:text-sm font-medium transition-colors hover:bg-muted inline-flex items-center gap-2"
           target={isCapsuleExternal ? "_blank" : undefined}
           rel={isCapsuleExternal ? "noreferrer" : undefined}
@@ -71,7 +75,7 @@ export function Hero(props: {
 
         <div className="flex gap-4 flex-wrap justify-center mt-2">
           <Link
-            href={props.primaryCtaLink}
+            href={primaryHref}
             target={isPrimaryExternal ? "_blank" : undefined}
             rel={isPrimaryExternal ? "noreferrer" : undefined}
             className={cn(buttonVariants({ variant: isPrimaryExternal ? "whatsapp" : "default", size: "lg" }))}
@@ -80,7 +84,7 @@ export function Hero(props: {
           </Link>
 
           <Link
-            href={props.secondaryCtaLink}
+            href={secondaryHref}
             target={isSecondaryExternal ? "_blank" : undefined}
             rel={isSecondaryExternal ? "noreferrer" : undefined}
             className={cn(buttonVariants({ variant: isSecondaryExternal ? "whatsapp" : "outline", size: "lg" }))}

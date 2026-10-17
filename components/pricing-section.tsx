@@ -151,7 +151,7 @@ export function PricingSection({
                 </a>
                 <p className="text-[11px] text-center text-muted-foreground">
                   Sem cobrança imediata •{" "}
-                  <Link href={app.urls.signUp} className="underline hover:text-foreground">
+                  <Link href={app?.urls?.signUp || "/handler/sign-up"} className="underline hover:text-foreground">
                     Fazer pré-cadastro
                   </Link>
                 </p>

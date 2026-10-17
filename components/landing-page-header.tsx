@@ -24,14 +24,14 @@ function SignInSignUpButtons() {
   return (
     <>
       <Link
-        href={app.urls.signIn}
+        href={app?.urls?.signIn || "/handler/sign-in"}
         className={buttonVariants({ variant: "secondary" })}
       >
         Log In
       </Link>
 
       <Link
-        href={app.urls.signUp}
+        href={app?.urls?.signUp || "/handler/sign-up"}
         className={buttonVariants({ variant: "default" })}
       >
         Pré-Cadastro

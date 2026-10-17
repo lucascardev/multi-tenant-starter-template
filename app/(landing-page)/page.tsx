@@ -73,28 +73,18 @@ const MOCK_PLANS: SubscriptionPlan[] = [
 ];
 
 async function fetchPlans(): Promise<SubscriptionPlan[]> {
-  try {
-    const baseUrl = process.env.NODE_ENV === 'production' 
-        ? "https://api.clara-ia.online" 
-        : "http://localhost:3030";
-        
-    const res = await fetch(`${baseUrl}/api/public/plans`, { cache: "no-store", next: { revalidate: 0 } });
-    if (!res.ok) {
-        throw new Error("Failed to fetch plans");
-    }
-    const data = await res.json();
-    return data.plans || [];
-  } catch (error) {
-    console.warn("Error fetching plans, using mock data for development:", error);
-    return MOCK_PLANS;
-  }
+  // The service is momentarily paused for upgrades: return predefined plans immediately without blocking network calls or causing stream timeouts
+  return MOCK_PLANS;
 }
 
 export default async function IndexPage() {
     const plans = await fetchPlans();
 	let project
 	try {
-		project = await stackServerApp.getProject()
+		project = await Promise.race([
+			stackServerApp.getProject(),
+			new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout fetching Stack project')), 2000))
+		]) as any;
 	} catch (e) {
 		console.warn('Failed to fetch Stack project (likely due to invalid keys in .env.local). Using mock for dev.')
 		project = { config: { clientTeamCreationEnabled: true } }
